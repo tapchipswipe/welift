@@ -2,10 +2,10 @@
 
 Locked product and pilot decisions. Update only by explicit owner change.
 
-**Last updated:** July 16, 2026 (idea refined — vendor Call Attendant)  
+**Last updated:** July 16, 2026 (code-first + AI fallback)  
 **Pilot:** The Inlets · **Thesis:** [PRODUCT.md](../PRODUCT.md) · **This week:** [THIS-WEEK.md](THIS-WEEK.md)
 
-**Refined idea in one line:** Autonomous Call Attendant for authorized vendors/workers who lack resident codes/stickers — not a virtual overnight guard.
+**Refined idea in one line:** CAM approves vendors → We Lift texts time-bound gate codes to their phones → AI Call Attendant is backup only (saves AI cost; better proof than voice claims).
 
 ---
 
@@ -81,7 +81,21 @@ Bar for success: pedestal audio, routing, unlock, logging on live hardware.
 
 ## Q7 — Primary AI audience (Lucas — Jul 16, 2026)
 
-**Decision:** Target users of the AI are **vendors and workers** (e.g. gardeners) who do not have resident credentials — **not** residents and not the default path for social guests.
+**Decision:** Target users of the **AI** are exception cases. Target users of the **product** are **vendors/workers** who receive auto-issued codes.
+
+---
+
+## Q8 — Code-first credentials (Lucas — Jul 16, 2026)
+
+**Decision:** When CAM adds allowed vendors (with phone numbers), We Lift **automatically sends a time-bound working gate code** (SMS and/or myQ guest pass). Vendors should use the **keypad** first.
+
+| Path | Role |
+|------|------|
+| Auto SMS / myQ code to roster phone | **Primary** — cheap, familiar, better auth |
+| AI Call Attendant | **Fallback** — lost code, not on roster, one-off with proof |
+| Resident sticker/code | Unchanged — not our path |
+
+**Implication:** Twilio (or myQ messaging) is for **credential delivery**, not human unlock. Product economics optimize for **fewer Retell minutes**, not more.
 
 ---
 

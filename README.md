@@ -4,17 +4,17 @@ Autonomous **Call Attendant** for LiftMaster / myQ Community gates in Southwest 
 
 ## The idea (refined)
 
-Residents already get in with a **keypad code** or **RFID sticker**. Guests should use **myQ guest passes**.  
+Residents already get in with a **keypad code** or **RFID sticker**. Guests should use **myQ guest passes**.
 
-**We Lift handles the exception:** vendors and workers (gardeners, pool techs, contractors) who don’t have those credentials tap Call Attendant → AI verifies against the association’s authorized list → **myQ opens the gate** (or denies). Low volume by design. No overnight human.
+**We Lift:** CAM approves vendors (and their phones) → we **auto-text a time-bound gate code** → they use the keypad. **AI Call Attendant is only the backup** when someone has no code — verify + myQ unlock (or deny). That cuts AI cost and beats “I’m with the lawn company” on the speaker.
 
-Full thesis: **[docs/PRODUCT.md](docs/PRODUCT.md)**
+Full thesis: **[docs/PRODUCT.md](docs/PRODUCT.md)** · Security: **[docs/GATE-SECURITY.md](docs/GATE-SECURITY.md)**
 
 | We are | We are not |
 |--------|------------|
-| Vendor / worker exception path | Replacement for codes & stickers |
-| Autonomous verify + myQ unlock | 2am SMS to a founder |
-| Low-call-volume software | Full virtual guardhouse (Envera-class) |
+| Vendor **credential desk** + rare AI fallback | AI receptionist for every truck |
+| Time-bound codes to known phones | Eternal shared vendor codes |
+| Autonomous unlock when AI is needed | 2am SMS to a founder |
 
 ## Product code
 

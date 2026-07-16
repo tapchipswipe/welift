@@ -1,13 +1,27 @@
 # We Lift — Refined Product Idea
 
-**Last refined:** July 16, 2026  
+**Last refined:** July 16, 2026 (code-first + AI fallback)  
 **Status:** Locked direction for The Inlets pilot and SWFL beachhead
 
 ---
 
 ## One sentence
 
-**We Lift is autonomous Call Attendant for gated communities: it lets authorized vendors and workers through the gate when they don’t have a resident code or sticker — without a human on the line.**
+**We Lift is vendor access for gated communities: the CAM approves vendors, we text them a working time-bound gate code, and an AI Call Attendant is only the backup when the code isn’t used.**
+
+---
+
+## The insight
+
+Most authorized vendors should **never talk to the AI**.
+
+| Path | Cost to We Lift | Experience |
+|------|-----------------|------------|
+| **Primary — SMS / myQ code** | Cheap SMS (or myQ guest pass API) | Vendor types code on keypad → in |
+| **Fallback — AI Call Attendant** | Retell minutes | No code / lost code / one-off → verify + unlock |
+| **Residents** | $0 | Sticker / resident code (unchanged) |
+
+If CAM lists GreenSide, AquaClear, and Acme Plumbing with phone numbers, We Lift **automatically texts each a working code** for the allowed window. That saves AI cost, reduces spoofing (code went to a known phone), and matches how gates already work.
 
 ---
 
@@ -15,121 +29,137 @@
 
 | Credential | Who | Result |
 |------------|-----|--------|
-| Keypad code | Residents (and sometimes guests) | Gate opens |
+| Keypad code | Residents | Gate opens |
 | RFID sticker / transponder | Residents | Gate opens |
 | myQ guest pass | Invited social guests | Gate opens |
 
-Those paths stay primary. Most cars never talk to We Lift.
-
 ---
 
-## The real problem we solve
+## What We Lift adds
 
-**Vendors and workers** (gardeners, lawn crews, pool techs, pest control, contractors) usually don’t get resident stickers. Today communities hack around that with:
+### 1) Access Desk (CAM) — authorization
 
-- Shared vendor codes (leaks, never rotate)
-- “Call the office / CAM / a resident”
-- Leaving someone at the gate
-- Bouncing the vendor and delaying work
+CAM enters vendors (and optional realtors / one-offs):
 
-That pain is intermittent and **low volume** — which is exactly why paying for a full overnight guard or a full virtual-SOC package is overkill, and why a focused AI Call Attendant fits.
+- Company name  
+- Phone number(s) for dispatch / lead tech  
+- Schedule window (e.g. Mon–Fri 7am–6pm, or “Thursday only”)  
+- Optional: unit / common areas  
 
----
+### 2) Auto credential — authentication
 
-## What We Lift is
+On save / each morning / at window start:
 
 ```text
-Vendor at pedestal (no code / no sticker)
-  → taps Call Attendant on myQ tablet
-  → Retell AI asks name + company + where they’re working
-  → checks CAM’s authorized vendor / exception list
-  → APPROVE → myQ Partner API unlocks
-  → DENY    → leave; CAM must add them (or host sends a guest pass)
-  → everything logged for the board
+CAM adds vendor + phone
+  → We Lift creates time-bound keypad code or myQ guest pass
+  → SMS to that phone: "The Inlets vendor access 7am–6pm: code 482193. Do not share."
+  → Vendor uses keypad — no Call Attendant, no AI charge
 ```
+
+Prefer **myQ guest pass / temporary code via Partner API** when available (native to the tablet). Until then: coordinated temp codes with dealer/CAM process, or SMS of a We Lift–issued code the CAP already accepts.
+
+### 3) AI Call Attendant — exception only
+
+```text
+Someone at pedestal without a working code
+  → taps Call Attendant
+  → AI asks company + proof (PIN / WO / why no code)
+  → on list + proof → myQ remote unlock
+  → else deny + log
+```
+
+AI volume should trend toward **near-zero** for standing vendors who get morning texts.
+
+---
 
 | We are | We are not |
 |--------|------------|
-| Exception-path **vendor access** | A replacement for codes / stickers |
-| Autonomous verify + open | A 2am human on SMS |
-| Low-call-volume software + list ops | A full virtual guard / Envera clone |
-| Overnight beachhead (when nobody answers) | Required for every entry |
+| **Vendor credential issuer** + low-volume AI backup | An AI receptionist for every entry |
+| Time-bound codes to **known phones** | Forever shared “vendor code 1234” on a sticky note |
+| Autonomous unlock when AI is needed | Overnight human on SMS |
+| Software sitting on existing myQ hardware | New pedestals / full virtual guardhouse |
+
+---
+
+## Why this is better than “AI answers everyone”
+
+1. **Unit economics** — SMS pennies vs Retell minutes per visit.  
+2. **Security** — code delivered to CAM-registered phone beats “I’m with GreenSide” on the mic.  
+3. **Familiar UX** — vendors already understand keypad codes.  
+4. **Honest product** — Call Attendant stays rare (lost code, new subcontractor, after-hours one-off).  
+5. **CAM ease** — approve once; system texts; no babysitting the gate.
+
+---
+
+## Security notes (codes done right)
+
+| Do | Don’t |
+|----|--------|
+| Rotate daily or per-window | One static vendor code for years |
+| Send only to roster phone numbers | Post codes in Facebook groups |
+| Expire at end of window | Let codes work at 2am if only daytime authorized |
+| Log issue + use + revoke | Share one code across unrelated trades |
+| AI requires extra proof if they didn’t use the SMS code | Let AI open on company name alone |
+
+Standing vendors: **daily rotating code** texted to dispatch.  
+One-offs / showings: **single-window code** texted at booking.
 
 ---
 
 ## Who it’s for
 
-**Buyer:** CAM / board of a LiftMaster + myQ Community HOA  
+**Buyer:** CAM / board on LiftMaster + myQ Community  
 
-**User at the gate:** Non-resident worker without credentials  
+**Happy path user:** Vendor who got a morning text and uses the keypad  
 
-**Not the user:** Residents (redirect to code/sticker); casual guests (prefer myQ pass)
+**AI user:** Exception — no code, wrong day, subcontractor not on roster  
 
----
-
-## Why this version of the idea is stronger
-
-1. **Fits existing hardware** — phone routing on Call Attendant, not new pedestals.
-2. **Honest volume** — rare calls → cheap AI ops, simple autonomy, less liability theater.
-3. **Clear deny policy** — unsure = deny; host/CAM updates the list. No overnight human.
-4. **Right competitor set** — shared codes and “call the manager,” not Allied’s full virtual gatehouse.
-5. **Right price anchor** — CAM time + bad vendor codes + missed work, **not** a $9k overnight guard.
+**Not the user:** Residents (sticker/code only)
 
 ---
 
-## Commercial shape (refined for low volume)
+## Commercial shape
 
-Stop selling “overnight guard replacement.” Sell **vendor desk / Call Attendant coverage**.
+Sell **Vendor Access Desk** (roster + auto codes + logging), not “AI guard hours.”
 
-| Component | Direction | Why |
-|-----------|-----------|-----|
-| Monthly platform | Modest flat (coverage + DID + logging + list hosting) | Boards like a line item; you’re always on |
-| Included verified opens | Small pool (e.g. 20–40 / mo) | Matches quiet vendor traffic |
-| Per extra verified open | Low single-digit to low-teens $ | Usage-fair when a renovation week spikes |
-| Per denied / spam call | $0 or tiny | Don’t punish the HOA for tire-kickers |
+| Component | Direction |
+|-----------|-----------|
+| Monthly platform | Roster, auto-SMS codes, logging, Call Attendant standby |
+| Included SMS credentials | e.g. 50–100 code sends / mo |
+| Included AI fallback calls | Small pool (e.g. 10–20 / mo) |
+| Overage | Per extra SMS; per extra AI call / verified open |
 
-**Do not** lead with $2.5k–$4k “vs $9k guard” unless the CAM is already shopping overnight staffing. For vendor-exception product, first paid pilots can sit **lower** — still cover insurance + Retell + your ops, but don’t pretend you’re replacing a booth.
-
-Exact numbers stay TBD after 2–4 weeks of real Call Attendant volume at The Inlets.
+AI is a **feature of the desk**, not the meter you want spinning.
 
 ---
 
-## Technical spine (unchanged, sharper)
+## Technical spine
 
 | Piece | Role |
 |-------|------|
-| Retell | Voice at the tablet |
-| `check_guest_list` | Vendor/company match → approve/deny |
-| `open_gate` | myQ Partner API unlock only |
-| Fail closed | API down or unsure → deny + daytime log |
-| CAM list | Source of truth for who may enter as vendor |
+| Access Desk UI / form | CAM CRUD for vendors + phones + windows |
+| Credential worker | Mint time-bound code / myQ pass; SMS via Twilio |
+| Retell + webhook | Fallback verify + myQ unlock |
+| Audit log | Issued codes, keypad use (if available), AI opens/denies |
 
-**Critical dependency:** myQ Partner API. Without remote unlock, this is only a polite phone tree.
+**Critical path still:** myQ Partner API (guest passes + remote unlock). Twilio here is for **code delivery to vendors**, not waking a human to open the gate.
 
 ---
 
 ## Pilot definition of done (The Inlets)
 
-1. Residents still use code/sticker only — zero AI opens marketed as resident unlock.  
-2. ≥1 real vendor company on the list completes pedestal → AI → gate open.  
-3. Unknown vendor is denied cleanly; CAM can add them next day.  
-4. No human woken overnight.  
-5. CAM understands the product as **vendor Call Attendant**, not “AI security guard.”
+1. CAM adds ≥3 standing vendors with phones.  
+2. Each receives an automated time-bound code SMS.  
+3. ≥1 vendor enters via keypad using that code (no AI).  
+4. AI path tested for “forgot code” with proof — not name-only.  
+5. Board log shows credentials issued vs AI fallbacks.
 
 ---
 
 ## CAM pitch (30 seconds)
 
-> Your residents keep their codes and stickers. Guests keep myQ passes. We Lift only answers Call Attendant for people who aren’t supposed to have those — landscapers, pool guys, contractors. We check your vendor list and open the gate automatically, or we turn them away. Low volume, fully autonomous, logged for the board.
-
----
-
-## What we deliberately won’t build next
-
-- Resident facial recognition / video-as-auth  
-- Replacing daytime booth staffing  
-- Shared permanent vendor codes as the product  
-- Human SMS unlock as the operating model  
+> You tell us which vendors are allowed and their phone numbers. We text them a working gate code for their window — they use the keypad like everyone else. If someone shows up without a code, our AI Call Attendant is the backup: verify against your list, open or deny, all logged. Residents keep stickers and codes. You’re not buying an AI guard; you’re buying vendor access that doesn’t need a person.
 
 ---
 
@@ -138,7 +168,7 @@ Exact numbers stay TBD after 2–4 weeks of real Call Attendant volume at The In
 | Doc | Use |
 |-----|-----|
 | This file | Product thesis |
-| [decision-log.md](docs/pilot-the-inlets/decision-log.md) | Locked Q&A |
-| [prompt.md](prompt.md) | What the agent says |
-| [THIS-WEEK.md](docs/pilot-the-inlets/THIS-WEEK.md) | Execution checklist |
-| [myq-api-path.md](docs/pilot-the-inlets/myq-api-path.md) | Unlock dependency |
+| [GATE-SECURITY.md](GATE-SECURITY.md) | Proof, PIN/code, anti-spoof |
+| [decision-log.md](pilot-the-inlets/decision-log.md) | Locked Q&A |
+| [prompt.md](../prompt.md) | AI fallback script |
+| [THIS-WEEK.md](pilot-the-inlets/THIS-WEEK.md) | Execution |
