@@ -95,7 +95,7 @@ Bar for success: pedestal audio, routing, unlock, logging on live hardware.
 | AI Call Attendant | **Fallback** — lost code, not on roster, one-off with proof |
 | Resident sticker/code | Unchanged — not our path |
 
-**Implication:** Twilio (or myQ messaging) is for **credential delivery**, not human unlock. Product economics optimize for **fewer Retell minutes**, not more.
+**Implication:** Twilio (or myQ messaging) is for **credential delivery to the company’s access contact** (owner or dispatch — not every driver), not human unlock. Large vendors forward codes to today’s tech like they assign jobs. See [VENDOR-CONTACTS.md](../VENDOR-CONTACTS.md). Product economics optimize for **fewer Retell minutes**, not more.
 
 ---
 

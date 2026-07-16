@@ -42,7 +42,7 @@ If CAM lists GreenSide, AquaClear, and Acme Plumbing with phone numbers, We Lift
 CAM enters vendors (and optional realtors / one-offs):
 
 - Company name  
-- Phone number(s) for dispatch / lead tech  
+- **Access contact** — owner mobile (SMB) or **dispatch / office** (multi-crew). CAM does **not** need every driver’s personal cell. See [VENDOR-CONTACTS.md](VENDOR-CONTACTS.md).  
 - Schedule window (e.g. Mon–Fri 7am–6pm, or “Thursday only”)  
 - Optional: unit / common areas  
 
@@ -51,10 +51,12 @@ CAM enters vendors (and optional realtors / one-offs):
 On save / each morning / at window start:
 
 ```text
-CAM adds vendor + phone
+CAM adds vendor + access contact phone
   → We Lift creates time-bound keypad code or myQ guest pass
-  → SMS to that phone: "The Inlets vendor access 7am–6pm: code 482193. Do not share."
-  → Vendor uses keypad — no Call Attendant, no AI charge
+  → SMS to access contact: "The Inlets vendor access 7am–6pm: code 482193"
+  → SMB: owner is on the truck → done
+  → Big company: dispatch forwards code to today's tech (same as job assignment)
+  → Tech uses keypad — no Call Attendant, no AI charge
 ```
 
 Prefer **myQ guest pass / temporary code via Partner API** when available (native to the tablet). Until then: coordinated temp codes with dealer/CAM process, or SMS of a We Lift–issued code the CAP already accepts.

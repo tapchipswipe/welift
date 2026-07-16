@@ -9,15 +9,18 @@
 ## Preferred model (Lucas — Jul 16)
 
 ```text
-CAM approves vendors X, Y, Z + phone numbers
-  → We Lift auto-SMS time-bound gate codes to those phones
-  → Vendors use keypad (no AI cost)
+CAM approves companies + one access contact each (owner or dispatch)
+  → We Lift auto-SMS time-bound gate codes to that contact
+  → SMB: owner uses code / Big firm: dispatch forwards to today's tech
+  → Keypad entry (no AI cost)
   → AI Call Attendant only if no/lost code + proof required
 ```
 
-Twilio (or equivalent) = **credential delivery**.  
+**Who gets the SMS?** Not “whoever might drive up.” See [VENDOR-CONTACTS.md](VENDOR-CONTACTS.md).
+
+Twilio = **credential delivery** to the company access contact.  
 Retell = **rare fallback**.  
-myQ API = mint guest pass / temp code when possible + remote unlock for AI path.
+myQ API = mint guest pass / temp code + remote unlock for AI path.
 
 ---
 
