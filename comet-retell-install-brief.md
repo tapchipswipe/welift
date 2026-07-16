@@ -75,7 +75,7 @@ Thank you for calling the {{community_name}} gate. This is the overnight attenda
 If the UI does not support `{{community_name}}`, paste this instead (substitute the real community name):
 
 ```
-Thank you for calling the The Inlets gate. This is the overnight attendant. How can I help you?
+Thank you for calling The Inlets gate. This is the overnight attendant. How can I help you?
 ```
 
 ---
