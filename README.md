@@ -22,7 +22,8 @@ Full thesis: **[docs/PRODUCT.md](docs/PRODUCT.md)** · Security: **[docs/GATE-SE
 |------|---------|
 | [webhook/](webhook/) | Verify → myQ unlock (autonomous) |
 | [configs/](configs/) | Retell LLM + agent JSON |
-| [configs/retell-agent-import.json](configs/retell-agent-import.json) | Dashboard Import file (rebuild via script) |
+| [configs/retell-agent-import.json](configs/retell-agent-import.json) | Retell dashboard Import (conversation-flow) |
+| [configs/retell-agent-flow.base.json](configs/retell-agent-flow.base.json) | Import template (nodes + tools) |
 | [prompt.md](prompt.md) | Vendor-first autonomous prompt |
 | [data/guest-list.example.json](data/guest-list.example.json) | Vendor-first authorized list sample |
 | [scripts/build_retell_import.py](scripts/build_retell_import.py) | Build Import JSON with webhook base |

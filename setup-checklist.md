@@ -66,7 +66,7 @@ python3 scripts/build_retell_import.py
 python3 scripts/build_retell_import.py --webhook-base https://xxxx.ngrok-free.app
 ```
 
-3. Dashboard → **Agents → Import** → upload [`configs/retell-agent-import.json`](configs/retell-agent-import.json).
+3. Dashboard → **Agents → Import** → upload [`configs/retell-agent-import.json`](configs/retell-agent-import.json) (conversation-flow export shape).
 4. If you used the placeholder host, update all three custom tool URLs (+ optional agent webhook) to your real `WEBHOOK_BASE`.
 5. Confirm dynamic variable `community_name` = `The Inlets`.
 6. Continue at §4 (phone number).

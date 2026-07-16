@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Build a Retell dashboard Import JSON from configs/retell-*.json."""
+"""Build a Retell dashboard Import JSON (conversation-flow format).
+
+Source of truth for structure: configs/retell-agent-flow.base.json
+(matches Retell conversation-flow export/import shape).
+"""
 
 from __future__ import annotations
 
@@ -11,66 +15,62 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PLACEHOLDER = "https://REPLACE_WITH_WEBHOOK_HOST"
+BASE_PATH = ROOT / "configs" / "retell-agent-flow.base.json"
+OUT_PATH = ROOT / "configs" / "retell-agent-import.json"
 
-# Stable synthetic ids — Retell dashboard import has failed when tool_id was missing.
-TOOL_IDS = {
-    "end_call": "tool_end_call_welift_inlets",
-    "check_guest_list": "tool_check_guest_list_welift_inlets",
-    "open_gate": "tool_open_gate_welift_inlets",
-    "escalate_to_oncall": "tool_escalate_to_oncall_welift_inlets",
-}
+# Old host tokens we may rewrite when substituting.
+HOST_MARKERS = (
+    "https://REPLACE_WITH_WEBHOOK_HOST",
+    "https://YOUR_WEBHOOK_HOST",
+)
 
 
-def _apply_webhook_base(llm_cfg: dict, agent_cfg: dict, base: str) -> None:
+def _rewrite_urls(obj: object, base: str) -> object:
     base = base.rstrip("/")
-    for tool in llm_cfg.get("general_tools", []):
-        name = tool.get("name")
-        if tool.get("type") == "custom" and name:
-            tool["url"] = f"{base}/tools/{name}"
-        if name and "tool_id" not in tool:
-            tool["tool_id"] = TOOL_IDS.get(name, f"tool_{name}_welift_inlets")
-    if agent_cfg.get("webhook_url") is not None or "webhook_url" in agent_cfg:
-        agent_cfg["webhook_url"] = f"{base}/retell/webhook"
+    if isinstance(obj, dict):
+        out = {}
+        for k, v in obj.items():
+            if k == "url" and isinstance(v, str):
+                for marker in HOST_MARKERS:
+                    if v.startswith(marker):
+                        suffix = v[len(marker) :]
+                        out[k] = f"{base}{suffix}"
+                        break
+                else:
+                    out[k] = v
+            elif k == "webhook_url" and isinstance(v, str):
+                out[k] = f"{base}/retell/webhook"
+            else:
+                out[k] = _rewrite_urls(v, base)
+        return out
+    if isinstance(obj, list):
+        return [_rewrite_urls(x, base) for x in obj]
+    return obj
 
 
-def build_import(
-    *,
-    webhook_base: str,
-    community: str,
-) -> dict:
-    llm_path = ROOT / "configs" / "retell-llm.json"
-    agent_path = ROOT / "configs" / "retell-agent.json"
+def build_import(*, webhook_base: str, community: str) -> dict:
+    with BASE_PATH.open() as f:
+        payload = json.load(f)
 
-    with llm_path.open() as f:
-        llm_cfg = json.load(f)
-    with agent_path.open() as f:
-        agent_cfg = json.load(f)
+    payload = _rewrite_urls(payload, webhook_base.rstrip("/"))
+    payload["agent_name"] = f"Gate Attendant — {community}"
 
-    _apply_webhook_base(llm_cfg, agent_cfg, webhook_base)
+    flow = payload.get("conversationFlow") or {}
+    dyn = flow.setdefault("default_dynamic_variables", {})
+    dyn["community_name"] = community
 
-    llm_cfg.setdefault("default_dynamic_variables", {})
-    llm_cfg["default_dynamic_variables"]["community_name"] = community
+    # Optional top-level webhook if present / wanted by some imports
+    if "webhook_url" not in payload:
+        payload["webhook_url"] = f"{webhook_base.rstrip('/')}/retell/webhook"
+    else:
+        payload["webhook_url"] = f"{webhook_base.rstrip('/')}/retell/webhook"
 
-    # Drop live ids so Import creates a new agent + LLM.
-    agent_cfg.pop("agent_id", None)
-    agent_cfg.pop("version", None)
-    agent_cfg.pop("is_published", None)
-    agent_cfg.pop("last_modification_timestamp", None)
-
-    # Embed LLM definition for dashboard Import (no foreign llm_id).
-    agent_cfg["response_engine"] = {
-        "type": "retell-llm",
-        "llm": llm_cfg,
-    }
-    agent_cfg.setdefault("default_dynamic_variables", {})
-    agent_cfg["default_dynamic_variables"]["community_name"] = community
-
-    return agent_cfg
+    return payload
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Merge retell-llm.json + retell-agent.json into a Retell Import file"
+        description="Build Retell conversation-flow Import JSON from the base template"
     )
     parser.add_argument(
         "--webhook-base",
@@ -85,17 +85,18 @@ def main() -> int:
     parser.add_argument(
         "--out",
         type=Path,
-        default=ROOT / "configs" / "retell-agent-import.json",
+        default=OUT_PATH,
         help="Output path for the Import JSON",
     )
     args = parser.parse_args()
 
+    if not BASE_PATH.is_file():
+        print(f"Missing base template: {BASE_PATH}", file=sys.stderr)
+        return 1
+
     base = args.webhook_base.rstrip("/")
     if not base.startswith("https://"):
-        print(
-            "webhook-base must be an https:// URL (or the REPLACE_WITH_WEBHOOK_HOST placeholder)",
-            file=sys.stderr,
-        )
+        print("webhook-base must be an https:// URL", file=sys.stderr)
         return 1
 
     payload = build_import(webhook_base=base, community=args.community)
@@ -105,6 +106,7 @@ def main() -> int:
         f.write("\n")
 
     print(f"Wrote {args.out}")
+    print(f"  format = conversation-flow (Retell dashboard Import)")
     print(f"  webhook_base = {base}")
     print(f"  community_name = {args.community}")
     if "REPLACE_WITH_WEBHOOK_HOST" in base:
@@ -114,7 +116,6 @@ def main() -> int:
             "  python scripts/build_retell_import.py "
             "--webhook-base https://YOUR_HOST"
         )
-        print("Then: Retell dashboard → Agents → Import → upload the JSON.")
     else:
         print()
         print("Next: Retell dashboard → Agents → Import → upload this file.")
