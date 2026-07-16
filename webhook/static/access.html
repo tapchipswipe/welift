@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>We Lift — Access Desk</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a222c;
+      --ink: #e8eef4;
+      --muted: #8b9aab;
+      --accent: #3d9a6a;
+      --accent-dim: #2d7350;
+      --line: #2a3542;
+      --warn: #c4a35a;
+      --danger: #c45c5c;
+      --font: "Segoe UI", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font);
+      background:
+        radial-gradient(ellipse 80% 50% at 10% -10%, #1a3d2e 0%, transparent 50%),
+        radial-gradient(ellipse 60% 40% at 100% 0%, #1a2a3d 0%, transparent 45%),
+        var(--bg);
+      color: var(--ink);
+    }
+    main {
+      max-width: 420px;
+      margin: 0 auto;
+      padding: 1.5rem 1.25rem 3rem;
+    }
+    .brand {
+      font-size: 0.75rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 0.35rem;
+    }
+    h1 {
+      font-size: 1.55rem;
+      font-weight: 650;
+      margin: 0 0 0.35rem;
+      line-height: 1.2;
+    }
+    .sub {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin: 0 0 1.5rem;
+      line-height: 1.45;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 1.15rem 1.1rem;
+      margin-bottom: 1rem;
+    }
+    label {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin: 0.75rem 0 0.35rem;
+    }
+    label:first-child { margin-top: 0; }
+    select, input {
+      width: 100%;
+      padding: 0.7rem 0.75rem;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: var(--bg);
+      color: var(--ink);
+      font-size: 1rem;
+    }
+    button {
+      width: 100%;
+      margin-top: 1.15rem;
+      padding: 0.85rem 1rem;
+      border: none;
+      border-radius: 10px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 1.05rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover { background: var(--accent-dim); }
+    button:disabled {
+      opacity: 0.55;
+      cursor: wait;
+    }
+    .result {
+      margin-top: 1rem;
+      padding: 0.85rem;
+      border-radius: 8px;
+      background: var(--bg);
+      border: 1px solid var(--line);
+      font-size: 0.9rem;
+      line-height: 1.45;
+      display: none;
+    }
+    .result.show { display: block; }
+    .result.ok { border-color: var(--accent); }
+    .result.err { border-color: var(--danger); }
+    .code {
+      font-size: 1.6rem;
+      letter-spacing: 0.2em;
+      font-weight: 700;
+      margin: 0.4rem 0;
+      color: var(--accent);
+    }
+    .log h2 {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin: 0 0 0.75rem;
+    }
+    .log ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .log li {
+      padding: 0.55rem 0;
+      border-top: 1px solid var(--line);
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .log li strong { color: var(--ink); }
+    .hint {
+      font-size: 0.8rem;
+      color: var(--warn);
+      margin-top: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="brand">We Lift</div>
+    <h1 id="community-title">Access Desk</h1>
+    <p class="sub">Send a time-bound vendor gate code by SMS. Same PIN works for Call Attendant fallback.</p>
+
+    <div class="card">
+      <label for="vendor">Vendor company</label>
+      <select id="vendor"></select>
+
+      <label for="phone">Send code to (tech or dispatch phone)</label>
+      <input id="phone" type="tel" placeholder="+19415551234" autocomplete="tel" />
+
+      <button id="send" type="button">Send today’s gate code</button>
+      <p class="hint" id="twilio-hint" hidden>Twilio not configured — code still mints; SMS goes to server logs only.</p>
+
+      <div class="result" id="result"></div>
+    </div>
+
+    <div class="card log">
+      <h2>Recent sends</h2>
+      <ul id="log"></ul>
+    </div>
+  </main>
+  <script>
+    async function loadMeta() {
+      const r = await fetch("/access/meta");
+      const data = await r.json();
+      document.getElementById("community-title").textContent =
+        data.community_name + " — Access Desk";
+      const sel = document.getElementById("vendor");
+      sel.innerHTML = "";
+      (data.vendors || []).forEach((v) => {
+        const opt = document.createElement("option");
+        opt.value = v.company_name;
+        opt.textContent = v.company_name + (v.window ? " · " + v.window : "");
+        sel.appendChild(opt);
+      });
+      if (!data.twilio_configured) {
+        document.getElementById("twilio-hint").hidden = false;
+      }
+      renderLog(data.deliveries || []);
+    }
+
+    function renderLog(items) {
+      const ul = document.getElementById("log");
+      if (!items.length) {
+        ul.innerHTML = "<li>No sends yet.</li>";
+        return;
+      }
+      ul.innerHTML = items
+        .map(
+          (d) =>
+            `<li><strong>${d.company_name || ""}</strong> · ···${d.last4 || "????"} → ${
+              d.to_masked || ""
+            } · ${d.status || ""} · ${(d.ts || "").slice(11, 19)}Z</li>`
+        )
+        .join("");
+    }
+
+    document.getElementById("send").addEventListener("click", async () => {
+      const btn = document.getElementById("send");
+      const result = document.getElementById("result");
+      btn.disabled = true;
+      result.className = "result";
+      result.textContent = "Sending…";
+      result.classList.add("show");
+      try {
+        const res = await fetch("/access/send_code", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            company_name: document.getElementById("vendor").value,
+            phone: document.getElementById("phone").value,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.detail || data.message || "Send failed");
+        }
+        result.classList.add("ok", "show");
+        result.innerHTML =
+          `<div>Sent to ${data.sms?.to_masked || "phone"}</div>` +
+          `<div class="code">${data.code}</div>` +
+          `<div>Show this once in the meeting. Last4 stored: ${data.last4}. ` +
+          `Valid until ${data.valid_until}</div>` +
+          `<div>SMS status: ${data.sms?.status} (${data.sms?.channel})</div>`;
+        await loadMeta();
+      } catch (e) {
+        result.classList.add("err", "show");
+        result.textContent = String(e.message || e);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    loadMeta();
+  </script>
+</body>
+</html>

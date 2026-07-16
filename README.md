@@ -16,26 +16,31 @@ Full thesis: **[docs/PRODUCT.md](docs/PRODUCT.md)** · Security: **[docs/GATE-SE
 | Time-bound codes to known phones | Eternal shared vendor codes |
 | Autonomous unlock when AI is needed | 2am SMS to a founder |
 
-## Product code
+## Product code (real thin MVP)
 
 | Path | Purpose |
 |------|---------|
-| [webhook/](webhook/) | Verify → myQ unlock (autonomous) |
+| [webhook/](webhook/) | Access Desk + credential SMS + Retell proof PIN + myQ unlock |
+| [webhook/static/access.html](webhook/static/access.html) | **Access Desk UI** (`GET /access`) |
+| [data/vendors.seed.json](data/vendors.seed.json) | The Inlets sample vendors |
 | [configs/](configs/) | Retell LLM + agent JSON |
-| [prompt.md](prompt.md) | Vendor-first autonomous prompt |
-| [data/guest-list.example.json](data/guest-list.example.json) | Vendor-first authorized list sample |
-| [scripts/create_agent.py](scripts/create_agent.py) | Push configs to Retell API |
-| [setup-checklist.md](setup-checklist.md) | Retell + myQ wiring |
+| [prompt.md](prompt.md) | Vendor proof-PIN autonomous prompt |
+| [docs/SALES-DEMO.md](docs/SALES-DEMO.md) | 5-minute live demo script |
+| [docs/PHASE0-OPS.md](docs/PHASE0-OPS.md) | Twilio / myQ / Associa checklist |
+| [docs/GATE-CODE-RUNBOOK.md](docs/GATE-CODE-RUNBOOK.md) | Wire PIN → physical barrier |
+| [docs/PILOT-WEEK.md](docs/PILOT-WEEK.md) | The Inlets pilot week |
+| [scripts/send_vendor_code.py](scripts/send_vendor_code.py) | CLI mint + SMS |
 | [webhook/DEPLOY.md](webhook/DEPLOY.md) | Stable HTTPS deploy |
 
 ### Quick start
 
-1. `cp webhook/.env.example webhook/.env` — `AUTONOMOUS=true`. Demos: `SIMULATE_MYQ_OPEN=true`. Live: set `MYQ_*`.
-2. `cd webhook && ./run.sh` (or deploy).
-3. Create Retell agent from [setup-checklist.md](setup-checklist.md) / [prompt.md](prompt.md).
-4. Point myQ Call Attendant at the Retell DID only after approve/deny/open tests pass.
+1. `cp webhook/.env.example webhook/.env` — set `TWILIO_*`, `AUTONOMOUS=true`, `SIMULATE_MYQ_OPEN=true` for demos.
+2. `cd webhook && ./run.sh` → open **http://127.0.0.1:8080/access**
+3. Send a code → phone buzzes (or log-only without Twilio).
+4. Retell agent from [setup-checklist.md](setup-checklist.md) / [prompt.md](prompt.md) — vendors need `proof_code`.
+5. Deploy stable HTTPS before a CAM meeting — [webhook/DEPLOY.md](webhook/DEPLOY.md).
 
-**Critical path:** [myQ Partner API](docs/pilot-the-inlets/myq-api-path.md).  
+**Critical path for metal:** [myQ Partner API](docs/pilot-the-inlets/myq-api-path.md) · [GATE-CODE-RUNBOOK.md](docs/GATE-CODE-RUNBOOK.md)
 
 **This week:** [docs/pilot-the-inlets/THIS-WEEK.md](docs/pilot-the-inlets/THIS-WEEK.md)
 

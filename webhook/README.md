@@ -1,15 +1,19 @@
-# Retell overnight gate webhooks (autonomous)
+# We Lift — Access Desk + Retell gate webhooks
 
-Public HTTPS endpoints Retell calls **mid-call**. AI verifies; myQ API opens. No overnight human.
+Real thin MVP: mint/SMS vendor gate codes, Retell proof PIN, myQ unlock (or simulate).
 
 ## Endpoints
 
 | Method | Path | What it does |
 |--------|------|----------------|
-| GET | `/health` | Liveness + autonomous/unlock flags |
-| POST | `/tools/check_guest_list` | Match visitor+host → **approve / deny** |
-| POST | `/tools/open_gate` | myQ Partner API unlock (or simulate for demos) |
-| POST | `/tools/escalate_to_oncall` | Log for daytime review; still deny |
+| GET | `/access` | **Access Desk UI** — send vendor codes |
+| GET | `/access/meta` | Community, vendors, recent deliveries |
+| POST | `/access/send_code` | Mint + Twilio SMS `{company_name, phone}` |
+| POST | `/access/revoke` | Revoke active credential |
+| GET | `/health` | Liveness + Twilio / myQ / simulate flags |
+| POST | `/tools/check_guest_list` | Vendors: **proof_code** required; guests: name match |
+| POST | `/tools/open_gate` | myQ unlock or `SIMULATE_MYQ_OPEN` |
+| POST | `/tools/escalate_to_oncall` | Log + deny (no human wake) |
 | POST | `/retell/webhook` | Optional call-ended events |
 
 ## Start locally
@@ -17,20 +21,19 @@ Public HTTPS endpoints Retell calls **mid-call**. AI verifies; myQ API opens. No
 ```bash
 cd webhook
 cp .env.example .env
-# For demos without API:
-#   SIMULATE_MYQ_OPEN=true
-# For live opens:
-#   set MYQ_API_BASE, MYQ_API_KEY, MYQ_FACILITY_ID, MYQ_ENTRANCE_ID
+# Sales demo: TWILIO_* + SIMULATE_MYQ_OPEN=true
 ./run.sh
+# open http://127.0.0.1:8080/access
 ```
 
-Production: [DEPLOY.md](DEPLOY.md).
+Production: [DEPLOY.md](DEPLOY.md) · Sales script: [docs/SALES-DEMO.md](../docs/SALES-DEMO.md)
 
 ## Configure `.env`
 
 | Var | Purpose |
 |-----|---------|
-| `AUTONOMOUS` | `true` (default) — no human SMS wake |
+| `TWILIO_*` | Real SMS for Access Desk |
+| `AUTONOMOUS` | `true` — no human SMS wake |
 | `HUMAN_SMS_FALLBACK` | Keep `false` |
 | `SIMULATE_MYQ_OPEN` | Demo unlock without API |
 | `MYQ_*` | Required for real autonomous opens |
@@ -38,16 +41,15 @@ Production: [DEPLOY.md](DEPLOY.md).
 | `RETELL_API_KEY` | Signature verify in prod |
 | `GUEST_LIST_JSON` | Inline list if no file (serverless) |
 
-## Guest list
+## Seed vendors
 
-Edit [`../data/guest-list.json`](../data/guest-list.json) (from example).
+[`../data/vendors.seed.json`](../data/vendors.seed.json) — GreenSide Lawn, AquaClear Pools, Bayshore Plumbing.
 
-Approve test names: **Jordan Lee** / **Sam Rivera**; **Alex Kim** / **Pat Morgan**.
-
-## Smoke test
+## Smoke tests
 
 ```bash
 source .venv/bin/activate
+SIMULATE_MYQ_OPEN=true VERIFY_RETELL_SIGNATURES=false python test_credentials.py
 SIMULATE_MYQ_OPEN=true VERIFY_RETELL_SIGNATURES=false python test_tools.py
 ```
 
@@ -55,6 +57,10 @@ SIMULATE_MYQ_OPEN=true VERIFY_RETELL_SIGNATURES=false python test_tools.py
 
 ```bash
 curl -s http://127.0.0.1:8080/health | jq
+
+curl -s -X POST http://127.0.0.1:8080/access/send_code \
+  -H 'Content-Type: application/json' \
+  -d '{"company_name":"GreenSide Lawn","phone":"+19415551234"}' | jq
 
 curl -s -X POST http://127.0.0.1:8080/tools/check_guest_list \
   -H 'Content-Type: application/json' \

@@ -1,11 +1,8 @@
-"""Autonomous overnight gate webhooks for Retell.
+"""We Lift gate webhooks + Access Desk.
 
-Product mode: AI verifies against guest list / post orders, then opens via myQ
-Partner API — no human awake overnight.
-
-- approve + open_gate → myQ remote unlock
-- deny / ambiguous → refuse; log only (no SMS wake)
-- escalate_to_oncall → audit log only; tell visitor to use myQ guest pass
+- Credential SMS codes (primary vendor path)
+- Retell tools: verify with proof PIN for vendors; myQ unlock
+- Autonomous — no overnight human SMS wake
 """
 
 from __future__ import annotations
@@ -24,7 +21,9 @@ from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+
+import credentials as creds
 
 load_dotenv()
 
@@ -36,6 +35,7 @@ log = logging.getLogger("gate-webhook")
 
 APP_DIR = Path(__file__).resolve().parent
 DATA_DIR = APP_DIR.parent / "data"
+STATIC_DIR = APP_DIR / "static"
 
 GUEST_LIST_PATH = Path(os.getenv("GUEST_LIST_PATH", str(DATA_DIR / "guest-list.json")))
 EVENTS_PATH = Path(os.getenv("EVENTS_PATH", str(DATA_DIR / "events.jsonl")))
@@ -51,15 +51,12 @@ IGNORE_VALIDITY_WINDOW = os.getenv("IGNORE_VALIDITY_WINDOW", "false").lower() in
     "yes",
 }
 
-# Autonomous product mode (default). Human SMS wake is off unless explicitly enabled.
 AUTONOMOUS = os.getenv("AUTONOMOUS", "true").lower() in {"1", "true", "yes"}
-# Local / cell demos only — pretend unlock succeeded without myQ API
 SIMULATE_MYQ_OPEN = os.getenv("SIMULATE_MYQ_OPEN", "false").lower() in {
     "1",
     "true",
     "yes",
 }
-# Deprecated: overnight SMS to a human. Off by default.
 HUMAN_SMS_FALLBACK = os.getenv("HUMAN_SMS_FALLBACK", "false").lower() in {
     "1",
     "true",
@@ -78,12 +75,12 @@ MYQ_UNLOCK_PATH = os.getenv(
     "MYQ_UNLOCK_PATH", "/v1/facilities/{facility_id}/entrances/{entrance_id}/unlock"
 )
 
-VERSION = "0.4.0"
+VERSION = "0.5.0"
 
 app = FastAPI(
-    title="We Lift — Autonomous gate tools",
+    title="We Lift — Access + gate tools",
     version=VERSION,
-    description="AI verify + myQ unlock. No overnight human attendant.",
+    description="Vendor codes via SMS + Retell AI proof PIN + myQ unlock",
 )
 app.add_middleware(
     CORSMiddleware,
@@ -340,11 +337,15 @@ async def _read_verified_json(
 @app.get("/")
 def root() -> dict[str, Any]:
     return {
-        "service": "welift-autonomous-gate-webhooks",
+        "service": "welift-access-and-gate",
         "version": VERSION,
         "mode": "autonomous" if AUTONOMOUS else "legacy_human_sms",
         "endpoints": [
             "GET /health",
+            "GET /access",
+            "GET /access/meta",
+            "POST /access/send_code",
+            "POST /access/revoke",
             "POST /tools/check_guest_list",
             "POST /tools/open_gate",
             "POST /tools/escalate_to_oncall",
@@ -357,19 +358,93 @@ def root() -> dict[str, Any]:
 def health() -> dict[str, Any]:
     guest_ok = bool(GUEST_LIST_JSON) or GUEST_LIST_PATH.exists()
     unlock_ready = _myq_configured() or SIMULATE_MYQ_OPEN
+    twilio_ok = bool(
+        TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER
+    )
     return {
-        "status": "ok" if (guest_ok and (unlock_ready or not AUTONOMOUS)) else "degraded",
+        "status": "ok",
         "version": VERSION,
         "autonomous": AUTONOMOUS,
         "community_default": DEFAULT_COMMUNITY,
         "guest_list_ready": guest_ok,
+        "vendors_seeded": bool(creds.load_vendors().get("vendors")),
+        "twilio_configured": twilio_ok,
         "myq_api_configured": _myq_configured(),
         "simulate_myq_open": SIMULATE_MYQ_OPEN,
         "unlock_ready": unlock_ready,
         "human_sms_fallback": HUMAN_SMS_FALLBACK,
         "verify_signatures": VERIFY_SIGNATURES,
         "serverless": SERVERLESS,
+        "active_credentials": len(creds.list_active_credentials()),
     }
+
+
+@app.get("/access", response_class=HTMLResponse)
+def access_ui() -> FileResponse:
+    path = STATIC_DIR / "access.html"
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="access.html missing")
+    return FileResponse(path)
+
+
+@app.get("/access/meta")
+def access_meta() -> dict[str, Any]:
+    book = creds.load_vendors()
+    twilio_ok = bool(
+        TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER
+    )
+    return {
+        "community_name": book.get("community_name") or DEFAULT_COMMUNITY,
+        "vendors": book.get("vendors", []),
+        "deliveries": creds.list_deliveries(20),
+        "active_credentials": creds.list_active_credentials(),
+        "twilio_configured": twilio_ok,
+    }
+
+
+@app.post("/access/send_code")
+async def access_send_code(request: Request) -> JSONResponse:
+    body = await request.json()
+    company = (body.get("company_name") or "").strip()
+    phone = (body.get("phone") or "").strip()
+    community = (body.get("community_name") or DEFAULT_COMMUNITY).strip()
+    actor = (body.get("actor") or "access_ui").strip()
+    if not company:
+        raise HTTPException(status_code=400, detail="company_name required")
+    if not phone:
+        raise HTTPException(status_code=400, detail="phone required")
+    try:
+        result = creds.send_code(
+            community=community,
+            company_name=company,
+            phone=phone,
+            actor=actor,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    _append_event({"tool": "access_send_code", "result": {**result, "code": "***"}})
+    return JSONResponse(result)
+
+
+@app.post("/access/revoke")
+async def access_revoke(request: Request) -> JSONResponse:
+    body = await request.json()
+    company = (body.get("company_name") or "").strip()
+    community = (body.get("community_name") or DEFAULT_COMMUNITY).strip()
+    if not company:
+        raise HTTPException(status_code=400, detail="company_name required")
+    n = creds.revoke_credential(
+        community=community, company_name=company, actor="access_ui"
+    )
+    _append_event(
+        {
+            "tool": "access_revoke",
+            "community": community,
+            "company_name": company,
+            "revoked": n,
+        }
+    )
+    return JSONResponse({"ok": True, "revoked": n})
 
 
 @app.post("/tools/check_guest_list")
@@ -385,6 +460,7 @@ async def check_guest_list(
     host = (args.get("host_name_or_address") or "").strip()
     company = (args.get("company_name") or "").strip()
     visit_type = (args.get("visit_type") or "").strip().lower()
+    proof_code = (args.get("proof_code") or args.get("pin") or "").strip()
 
     # Autonomous night policy: ambiguous / ops → deny (log), never wake a human.
     if visit_type == "ops":
@@ -415,24 +491,86 @@ async def check_guest_list(
         _append_event({"tool": "check_guest_list", "args": args, "result": result})
         return JSONResponse(result)
 
-    # Vendors/workers: person or company + where they're working. Social guests: name + host.
-    is_vendorish = visit_type in {"vendor", "delivery", "worker"} or bool(company)
+    # Vendors/workers: require company + proof PIN from Access Desk SMS.
+    is_vendorish = visit_type in {"vendor", "delivery", "worker", "showing"} or bool(
+        company
+    )
     if is_vendorish:
-        if not visitor and not company:
+        if not company:
             result = {
                 "decision": "deny",
                 "confidence": "low",
                 "message": (
-                    "Need worker name and/or company name for vendor entry. "
-                    "Ask once more; if still incomplete, deny — do not open."
+                    "Need the company name. Ask once. Then ask for the gate code / PIN "
+                    "from today's SMS. Do not open without proof."
                 ),
                 "community_name": community,
             }
             _append_event({"tool": "check_guest_list", "args": args, "result": result})
             return JSONResponse(result)
-        if not host:
-            host = "association"
-    elif not visitor or not host:
+        if not proof_code:
+            result = {
+                "decision": "deny",
+                "confidence": "low",
+                "message": (
+                    f"Company noted ({company}). Ask for today's gate code / PIN from "
+                    "the SMS (or from dispatch). Do NOT open without proof_code. "
+                    "Call this tool again with proof_code."
+                ),
+                "community_name": community,
+                "needs_proof_code": True,
+            }
+            _append_event({"tool": "check_guest_list", "args": args, "result": result})
+            return JSONResponse(result)
+
+        proof = creds.verify_proof(
+            community=community, company_name=company, proof_code=proof_code
+        )
+        if not proof.get("ok"):
+            result = {
+                "decision": "deny",
+                "confidence": "high",
+                "message": _deny_message(
+                    f"Proof PIN failed ({proof.get('reason')}). "
+                    "Company claim alone is not enough."
+                ),
+                "community_name": community,
+                "proof": {k: v for k, v in proof.items() if k != "ok"},
+            }
+            _append_event(
+                {
+                    "tool": "check_guest_list",
+                    "args": {**args, "proof_code": "***"},
+                    "result": result,
+                }
+            )
+            return JSONResponse(result)
+
+        result = {
+            "decision": "approve",
+            "confidence": "high",
+            "matched_entry": {
+                "company_name": proof.get("company_name"),
+                "visitor_name": visitor or "vendor crew",
+                "visit_type": visit_type or "vendor",
+                "proof_last4": proof.get("last4"),
+            },
+            "message": (
+                f"Approved via proof PIN for {proof.get('company_name')}. "
+                "Call open_gate next."
+            ),
+            "community_name": community,
+        }
+        _append_event(
+            {
+                "tool": "check_guest_list",
+                "args": {**args, "proof_code": "***"},
+                "result": result,
+            }
+        )
+        return JSONResponse(result)
+
+    if not visitor or not host:
         result = {
             "decision": "deny",
             "confidence": "low",

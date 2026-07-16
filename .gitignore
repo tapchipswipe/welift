@@ -7,3 +7,5 @@
 .DS_Store
 **/data/events.jsonl
 **/data/guest-list.json
+**/data/credentials.json
+**/data/credentials.tmp
