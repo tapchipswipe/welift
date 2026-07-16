@@ -1,76 +1,57 @@
-# Retell overnight gate webhooks
+# Retell overnight gate webhooks (autonomous)
 
-Public HTTPS endpoints Retell calls **mid-call**.
+Public HTTPS endpoints Retell calls **mid-call**. AI verifies; myQ API opens. No overnight human.
 
 ## Endpoints
 
 | Method | Path | What it does |
 |--------|------|----------------|
-| GET | `/health` | Liveness + config flags |
-| POST | `/tools/check_guest_list` | Match visitor+host → approve / deny / escalate |
-| POST | `/tools/open_gate` | SMS on-call to unlock myQ (Phase 1) |
-| POST | `/tools/escalate_to_oncall` | SMS on-call with summary |
+| GET | `/health` | Liveness + autonomous/unlock flags |
+| POST | `/tools/check_guest_list` | Match visitor+host → **approve / deny** |
+| POST | `/tools/open_gate` | myQ Partner API unlock (or simulate for demos) |
+| POST | `/tools/escalate_to_oncall` | Log for daytime review; still deny |
 | POST | `/retell/webhook` | Optional call-ended events |
 
 ## Start locally
 
 ```bash
 cd webhook
-cp .env.example .env   # set ONCALL_PHONE=+1… and RETELL_API_KEY; DEFAULT_COMMUNITY=The Inlets
+cp .env.example .env
+# For demos without API:
+#   SIMULATE_MYQ_OPEN=true
+# For live opens:
+#   set MYQ_API_BASE, MYQ_API_KEY, MYQ_FACILITY_ID, MYQ_ENTRANCE_ID
 ./run.sh
 ```
 
-Production deploy: see [DEPLOY.md](DEPLOY.md) (Railway / Fly / Docker).
-
-Second terminal:
-
-```bash
-ngrok http 8080
-```
-
-Copy the `https://….ngrok-free.app` base. In Retell, set custom function URLs to:
-
-```
-https://YOUR_NGROK/tools/check_guest_list
-https://YOUR_NGROK/tools/open_gate
-https://YOUR_NGROK/tools/escalate_to_oncall
-```
-
-Optional agent webhook:
-
-```
-https://YOUR_NGROK/retell/webhook
-```
+Production: [DEPLOY.md](DEPLOY.md).
 
 ## Configure `.env`
 
-| Var | Required | Purpose |
-|-----|----------|---------|
-| `ONCALL_PHONE` | yes (for real SMS) | E.164 cell, e.g. `+19415551234` |
-| `RETELL_API_KEY` | for live Retell | Signature verify |
-| `VERIFY_RETELL_SIGNATURES` | | `false` for local curl; `true` in prod |
-| `DEFAULT_COMMUNITY` | | Default HOA name |
-| `TWILIO_*` | optional | Real SMS; else messages go to server logs |
-| `GUEST_LIST_JSON` | optional | Inline JSON if no file (serverless) |
-| `IGNORE_VALIDITY_WINDOW` | optional | Ignore entry date windows |
-| `SERVERLESS` | optional | Log events instead of writing `events.jsonl` |
+| Var | Purpose |
+|-----|---------|
+| `AUTONOMOUS` | `true` (default) — no human SMS wake |
+| `HUMAN_SMS_FALLBACK` | Keep `false` |
+| `SIMULATE_MYQ_OPEN` | Demo unlock without API |
+| `MYQ_*` | Required for real autonomous opens |
+| `DEFAULT_COMMUNITY` | `The Inlets` |
+| `RETELL_API_KEY` | Signature verify in prod |
+| `GUEST_LIST_JSON` | Inline list if no file (serverless) |
 
 ## Guest list
 
-Edit [`../data/guest-list.json`](../data/guest-list.json) (copied from example on first run).
+Edit [`../data/guest-list.json`](../data/guest-list.json) (from example).
 
-Approve test names:
-- Visitor **Jordan Lee** → host **Sam Rivera**
-- Visitor **Alex Kim** → host **Pat Morgan**
+Approve test names: **Jordan Lee** / **Sam Rivera**; **Alex Kim** / **Pat Morgan**.
 
 ## Smoke test
 
 ```bash
 source .venv/bin/activate
-VERIFY_RETELL_SIGNATURES=false python test_tools.py
+SIMULATE_MYQ_OPEN=true VERIFY_RETELL_SIGNATURES=false python test_tools.py
 ```
 
-## Curl examples
+## Curl
 
 ```bash
 curl -s http://127.0.0.1:8080/health | jq
@@ -79,5 +60,3 @@ curl -s -X POST http://127.0.0.1:8080/tools/check_guest_list \
   -H 'Content-Type: application/json' \
   -d '{"args":{"community_name":"The Inlets","visitor_name":"Jordan Lee","host_name_or_address":"Sam Rivera","visit_type":"guest"}}' | jq
 ```
-
-(Use `VERIFY_RETELL_SIGNATURES=false` in `.env` for unsigned local curls.)

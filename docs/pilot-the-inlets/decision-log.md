@@ -2,22 +2,23 @@
 
 Locked product and pilot decisions. Update only by explicit owner change.
 
-**Last updated:** July 16, 2026  
+**Last updated:** July 16, 2026 (autonomous lock)  
 **Pilot:** The Inlets · **Target:** August 2026 (shadow / pre-CAM — see [pre-cam-playbook.md](pre-cam-playbook.md) · [THIS-WEEK.md](THIS-WEEK.md))
 
 ---
 
 ## Q1 — Autonomous verify + open
 
-**Decision:** Fully autonomous — AI verifies visitor and opens the gate (e.g. gardener at gate without a code).
+**Decision:** **Fully autonomous.** AI verifies the visitor and opens the gate. **No overnight human attendant. No 2am SMS wake.**
 
 | Layer | Choice |
 |-------|--------|
 | Verification | Retell voice agent + guest list / post orders |
-| Open (target) | myQ Partner API remote unlock (Phase 2) |
-| Open (August pilot) | **SMS bridge OK** — Lucas taps Unlock in myQ app; disclose as human-confirmed |
+| Open | **myQ Partner API remote unlock only** |
+| Ambiguous / no match | **Deny** + log for daytime review (not escalate to a waking human) |
+| Human SMS bridge | **Rejected** as product path (legacy flag `HUMAN_SMS_FALLBACK` off) |
 
-**Implication:** Sell access-control automation, not call-handling only. API pursuit starts Week 0; SMS acceptable for first 30–60 nights.
+**Implication:** Sell access-control automation. **myQ Partner API is the critical path** — without it, live autonomous opens cannot ship. Use `SIMULATE_MYQ_OPEN=true` only for voice demos.
 
 ---
 
@@ -76,7 +77,7 @@ Bar for success: pedestal audio, routing, unlock, logging on live hardware.
 | **Coverage window** | 8:00pm–6:00am Eastern |
 | **Users of AI** | **Visitors at pedestal only** — not residents |
 | **Residents** | Continue myQ app, codes, guest passes — unchanged |
-| **On-call Phase 1** | **Sole operator: Lucas** |
+| **On-call Phase 1** | **None** — autonomous overnight; daytime log review only |
 | **Repo** | Single monorepo `welift` (launch pack + product code merged) |
 | **Target month** | **August 2026** first live overnight |
 
@@ -119,11 +120,12 @@ Bar for success: pedestal audio, routing, unlock, logging on live hardware.
 
 | Item | Status |
 |------|--------|
-| **Retell** | **In progress** — configs + prompt ready; needs live DID + §5 tests |
-| **Webhook** | **Code ready (v0.3)** — Phase 1 SMS + Phase 2 myQ stub; needs deploy + secrets |
-| **Twilio** | **Not started** — blocker for live SMS SLA |
-| **Deploy** | Configs in `webhook/DEPLOY.md` (Railway / Fly / Docker) |
-| **Exceptions guest list maintainer** | **CAM or Lucas** — either can update nightly list |
+| **Product mode** | **Autonomous** — AI decide + myQ unlock; deny when unsure |
+| **Retell** | Prompt/configs updated for autonomous; needs live DID + §5 |
+| **Webhook** | **v0.4 autonomous** — no SMS wake by default |
+| **Twilio** | **Not required** (deprecated SMS path) |
+| **myQ Partner API** | **Critical blocker** for live opens — apply Week 0 |
+| **Exceptions guest list** | CAM or Lucas edits nightly; high-confidence matches only auto-open |
 
 ---
 

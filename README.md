@@ -2,15 +2,15 @@
 
 Unified repo for **We Lift**: autonomous overnight gate verification for myQ Community (Retell voice agent) plus the SWFL launch pack (941 / 34211 corridor).
 
-**Beachhead:** 8:00pm–6:00am virtual coverage on LiftMaster + myQ Community. Voice layer is **Retell AI** with custom tools (`check_guest_list`, `open_gate`, `escalate_to_oncall`). Phase 1 unlock = SMS on-call → myQ remote open.
+**Beachhead:** 8:00pm–6:00am **autonomous** coverage on LiftMaster + myQ Community. Voice layer is **Retell AI** with tools (`check_guest_list`, `open_gate`, `escalate_to_oncall` = log-only). Unlock = **myQ Partner API**. Ambiguous visits are **denied** — no overnight human.
 
 ## Product (Retell agent)
 
 | Path | Purpose |
 |------|---------|
-| [webhook/](webhook/) | FastAPI handlers: `check_guest_list`, `open_gate`, `escalate_to_oncall` |
-| [configs/](configs/) | Retell LLM + agent JSON (API or dashboard import) |
-| [prompt.md](prompt.md) | Begin message, system prompt, FAQs |
+| [webhook/](webhook/) | FastAPI: verify → myQ unlock (autonomous) |
+| [configs/](configs/) | Retell LLM + agent JSON |
+| [prompt.md](prompt.md) | Autonomous begin message + system prompt |
 | [data/guest-list.example.json](data/guest-list.example.json) | Sample overnight guest list |
 | [scripts/create_agent.py](scripts/create_agent.py) | Optional: push configs to Retell API |
 | [setup-checklist.md](setup-checklist.md) | Retell + myQ wiring checklist |
@@ -18,12 +18,12 @@ Unified repo for **We Lift**: autonomous overnight gate verification for myQ Com
 
 ### Quick start
 
-1. Copy `webhook/.env.example` → `webhook/.env` and set Twilio / Retell secrets (`DEFAULT_COMMUNITY=The Inlets`).
-2. `cd webhook && ./run.sh` — expose with ngrok, or deploy stable HTTPS ([webhook/DEPLOY.md](webhook/DEPLOY.md)).
-3. Create the Retell agent using [setup-checklist.md](setup-checklist.md) and point tools at your webhook URLs.
-4. Route myQ Call Attendant to the Retell DID for a pilot window **only after** §5 cell tests pass.
+1. Copy `webhook/.env.example` → `webhook/.env` (`AUTONOMOUS=true`). For demos set `SIMULATE_MYQ_OPEN=true`; for live opens set `MYQ_*`.
+2. `cd webhook && ./run.sh` — or deploy ([webhook/DEPLOY.md](webhook/DEPLOY.md)).
+3. Create the Retell agent ([setup-checklist.md](setup-checklist.md)); point tools at your webhook.
+4. Route myQ Call Attendant → Retell DID only after approve/deny/open tests pass with real or simulated unlock.
 
-Phase 1: `open_gate` SMSes the on-call operator to unlock in myQ. Phase 2: set `MYQ_*` env vars for Partner API unlock (SMS fallback remains).
+**Critical path:** myQ Partner API credentials. Without them, the product cannot open gates autonomously.
 
 **Pilot this week:** [docs/pilot-the-inlets/THIS-WEEK.md](docs/pilot-the-inlets/THIS-WEEK.md)
 

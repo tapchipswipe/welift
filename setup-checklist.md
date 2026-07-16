@@ -90,16 +90,16 @@ From [`configs/retell-agent.json`](configs/retell-agent.json):
 
 ## 5. Test script (simulate visitor)
 
-Call the Retell number. Walk three paths:
+Call the Retell number. Walk three paths (`SIMULATE_MYQ_OPEN=true` until myQ API is live):
 
-1. **Approve** — use a name from `guest-list.json` (e.g. Jordan Lee / Sam Rivera)  
-   - Expect: check → open → SMS/log `OPEN … unlock myQ NOW`  
+1. **Approve** — name from `guest-list.json` (e.g. Jordan Lee / Sam Rivera)  
+   - Expect: check → open → `status: opened` (simulate or myQ)  
 2. **Deny** — random visitor + host not on list  
-   - Expect: deny script; no open SMS  
-3. **Escalate** — mumble / conflicting info  
-   - Expect: escalate SMS; no open  
+   - Expect: deny script; no open  
+3. **Ambiguous / ops** — mumble or visit_type ops  
+   - Expect: deny + log; agent must **not** say a human is coming  
 
-Confirm `data/events.jsonl` grows with each tool call.
+Confirm events log grows with each tool call.
 
 ---
 
@@ -109,17 +109,17 @@ Same pattern as Smith ([how-to-connect-myq-to-smith.md](../01-metro-validation/h
 
 > Point overnight Call Attendant / quick-call at the **Retell DID**, 8pm–6am.
 
-Do a controlled 10-minute pedestal test with the dealer/CAM present.
+Do a controlled 10-minute pedestal test with the dealer/CAM present. Live opens require real `MYQ_*` (not simulate).
 
 ---
 
-## 7. Phase 1 unlock SOP (you)
+## 7. Autonomous unlock SOP
 
-When SMS arrives:
+When a visitor is approved overnight:
 
-1. Open myQ Community → that entrance → **Unlock**  
-2. Optional: note time in your log  
-3. Later (Phase 2): replace SMS with partner myQ remote-open API  
+1. Retell calls `open_gate` → myQ Partner API unlocks  
+2. Visitor waits for barrier motion  
+3. Failures fail closed — deny + daytime log review (no 2am SMS)
 
 ---
 
@@ -128,17 +128,18 @@ When SMS arrives:
 | Mistake | Fix |
 |---------|-----|
 | Tool URL still `YOUR_WEBHOOK_HOST` | Update all three custom function URLs |
-| No `guest-list.json` | Copy example; agent will escalate |
+| No `guest-list.json` | Copy example; agent will deny |
 | Signature 401s | Use webhook API key; or `VERIFY_RETELL_SIGNATURES=false` for local curl only |
-| Agent opens without check | Prompt must say open_gate only after approve — tighten temperature |
+| Agent opens without check | Prompt: open_gate only after approve — temperature ~0.2 |
 | Forward myQ before Retell test | Never — finish §5 first |
+| Expect human SMS | Product is autonomous — configure `MYQ_*` instead |
+| Live traffic with only simulate | Turn `SIMULATE_MYQ_OPEN=false` after API works |
 
 ---
 
 ## Message to yourself on first live night
 
 - [ ] Guest list loaded for tonight  
-- [ ] Webhook + ngrok/deploy up  
-- [ ] Phone on loud for SMS  
-- [ ] myQ unlock works from your phone  
+- [ ] Webhook deploy up; `AUTONOMOUS=true`; real `MYQ_*`  
+- [ ] Health shows `unlock_ready: true` and `simulate_myq_open: false`  
 - [ ] One intentional test call from the physical tablet  

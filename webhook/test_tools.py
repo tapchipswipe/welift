@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Smoke-test all Retell tool webhooks (signature verify off)."""
+"""Smoke-test autonomous Retell tool webhooks (signature verify off)."""
 
 from __future__ import annotations
 
@@ -9,11 +9,12 @@ import sys
 from pathlib import Path
 
 os.environ.setdefault("VERIFY_RETELL_SIGNATURES", "false")
-os.environ.setdefault("ONCALL_PHONE", "+19415551234")
 os.environ.setdefault("DEFAULT_COMMUNITY", "The Inlets")
 os.environ.setdefault("SERVERLESS", "true")
+os.environ.setdefault("AUTONOMOUS", "true")
+os.environ.setdefault("HUMAN_SMS_FALLBACK", "false")
+os.environ.setdefault("SIMULATE_MYQ_OPEN", "true")
 
-# Prefer example guest list so tests don't need a local copy
 ROOT = Path(__file__).resolve().parents[1]
 example = ROOT / "data" / "guest-list.example.json"
 os.environ.setdefault("GUEST_LIST_PATH", str(example))
@@ -30,7 +31,8 @@ def main_test() -> int:
     assert h.status_code == 200, h.text
     body = h.json()
     assert body["status"] == "ok"
-    assert body["community_default"] == "The Inlets"
+    assert body["autonomous"] is True
+    assert body["unlock_ready"] is True
     print("health OK", body)
 
     r = client.post(
@@ -47,9 +49,8 @@ def main_test() -> int:
     )
     assert r.status_code == 200, r.text
     assert r.json()["decision"] == "approve", r.json()
-    print("check_guest_list APPROVE OK", r.json()["decision"])
+    print("check_guest_list APPROVE OK")
 
-    # Token-order / partial host address match
     r = client.post(
         "/tools/check_guest_list",
         json={
@@ -88,8 +89,8 @@ def main_test() -> int:
             }
         },
     )
-    assert r.json()["decision"] == "escalate"
-    print("check_guest_list OPS ESCALATE OK")
+    assert r.json()["decision"] == "deny", r.json()
+    print("check_guest_list OPS DENY OK")
 
     r = client.post(
         "/tools/open_gate",
@@ -103,8 +104,9 @@ def main_test() -> int:
         },
     )
     assert r.status_code == 200
-    assert r.json()["status"] == "pending_human_open"
-    print("open_gate OK", r.json()["status"])
+    assert r.json()["status"] == "opened", r.json()
+    assert r.json()["autonomous"] is True
+    print("open_gate AUTONOMOUS OPEN OK", r.json()["myq"]["channel"])
 
     r = client.post(
         "/tools/escalate_to_oncall",
@@ -117,14 +119,31 @@ def main_test() -> int:
             }
         },
     )
-    assert r.json()["status"] == "escalated"
-    print("escalate_to_oncall OK")
+    assert r.json()["status"] == "logged_deny", r.json()
+    assert r.json()["decision"] == "deny"
+    print("escalate_to_oncall LOG+DENY OK")
+
+    # Fail closed when simulate off and no myQ
+    main.SIMULATE_MYQ_OPEN = False
+    main.MYQ_API_BASE = ""
+    r = client.post(
+        "/tools/open_gate",
+        json={
+            "args": {
+                "visitor_name": "Jordan Lee",
+                "host_name_or_address": "Sam Rivera",
+                "reason": "no api",
+            }
+        },
+    )
+    assert r.json()["status"] == "failed", r.json()
+    print("open_gate FAIL-CLOSED OK")
+    main.SIMULATE_MYQ_OPEN = True
 
     r = client.post("/retell/webhook", json={"event": "call_ended"})
     assert r.json()["ok"] is True
     print("retell/webhook OK")
 
-    # Inline guest list via env (serverless path)
     os.environ["GUEST_LIST_JSON"] = json.dumps(
         {
             "community_name": "The Inlets",
@@ -140,7 +159,6 @@ def main_test() -> int:
             ],
         }
     )
-    # Reload module env-backed constants used at request time via GUEST_LIST_JSON
     main.GUEST_LIST_JSON = os.environ["GUEST_LIST_JSON"]
     r = client.post(
         "/tools/check_guest_list",

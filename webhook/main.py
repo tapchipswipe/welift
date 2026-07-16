@@ -1,7 +1,11 @@
-"""Phase-1 Retell custom-function webhooks for overnight gate attendant.
+"""Autonomous overnight gate webhooks for Retell.
 
-Phase 1: open_gate → SMS on-call → human unlocks in myQ.
-Phase 2: when MYQ_* env vars are set, attempt Partner API unlock first; SMS fallback.
+Product mode: AI verifies against guest list / post orders, then opens via myQ
+Partner API — no human awake overnight.
+
+- approve + open_gate → myQ remote unlock
+- deny / ambiguous → refuse; log only (no SMS wake)
+- escalate_to_oncall → audit log only; tell visitor to use myQ guest pass
 """
 
 from __future__ import annotations
@@ -35,11 +39,10 @@ DATA_DIR = APP_DIR.parent / "data"
 
 GUEST_LIST_PATH = Path(os.getenv("GUEST_LIST_PATH", str(DATA_DIR / "guest-list.json")))
 EVENTS_PATH = Path(os.getenv("EVENTS_PATH", str(DATA_DIR / "events.jsonl")))
-GUEST_LIST_JSON = os.getenv("GUEST_LIST_JSON", "").strip()  # serverless override
+GUEST_LIST_JSON = os.getenv("GUEST_LIST_JSON", "").strip()
 SERVERLESS = os.getenv("SERVERLESS", "false").lower() in {"1", "true", "yes"}
 
 RETELL_API_KEY = os.getenv("RETELL_API_KEY", "")
-ONCALL_PHONE = os.getenv("ONCALL_PHONE", "")
 DEFAULT_COMMUNITY = os.getenv("DEFAULT_COMMUNITY", "The Inlets")
 VERIFY_SIGNATURES = os.getenv("VERIFY_RETELL_SIGNATURES", "true").lower() == "true"
 IGNORE_VALIDITY_WINDOW = os.getenv("IGNORE_VALIDITY_WINDOW", "false").lower() in {
@@ -48,11 +51,25 @@ IGNORE_VALIDITY_WINDOW = os.getenv("IGNORE_VALIDITY_WINDOW", "false").lower() in
     "yes",
 }
 
+# Autonomous product mode (default). Human SMS wake is off unless explicitly enabled.
+AUTONOMOUS = os.getenv("AUTONOMOUS", "true").lower() in {"1", "true", "yes"}
+# Local / cell demos only — pretend unlock succeeded without myQ API
+SIMULATE_MYQ_OPEN = os.getenv("SIMULATE_MYQ_OPEN", "false").lower() in {
+    "1",
+    "true",
+    "yes",
+}
+# Deprecated: overnight SMS to a human. Off by default.
+HUMAN_SMS_FALLBACK = os.getenv("HUMAN_SMS_FALLBACK", "false").lower() in {
+    "1",
+    "true",
+    "yes",
+}
+ONCALL_PHONE = os.getenv("ONCALL_PHONE", "")
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
 TWILIO_FROM_NUMBER = os.getenv("TWILIO_FROM_NUMBER", "")
 
-# Phase 2 — myQ Partner API (optional; SMS remains fallback)
 MYQ_API_BASE = os.getenv("MYQ_API_BASE", "").rstrip("/")
 MYQ_API_KEY = os.getenv("MYQ_API_KEY", "")
 MYQ_FACILITY_ID = os.getenv("MYQ_FACILITY_ID", "")
@@ -61,10 +78,12 @@ MYQ_UNLOCK_PATH = os.getenv(
     "MYQ_UNLOCK_PATH", "/v1/facilities/{facility_id}/entrances/{entrance_id}/unlock"
 )
 
+VERSION = "0.4.0"
+
 app = FastAPI(
-    title="Virtual Gate Guard — Retell tools",
-    version="0.3.0",
-    description="Mid-call tools: check_guest_list, open_gate, escalate_to_oncall",
+    title="We Lift — Autonomous gate tools",
+    version=VERSION,
+    description="AI verify + myQ unlock. No overnight human attendant.",
 )
 app.add_middleware(
     CORSMiddleware,
@@ -84,7 +103,11 @@ def _normalize(text: str) -> str:
 
 
 def _tokens(text: str) -> set[str]:
-    return {t for t in _normalize(text).split() if t and t not in {"the", "a", "an", "of"}}
+    return {
+        t
+        for t in _normalize(text).split()
+        if t and t not in {"the", "a", "an", "of"}
+    }
 
 
 def _names_match(a: str, b: str) -> bool:
@@ -97,7 +120,6 @@ def _names_match(a: str, b: str) -> bool:
     ta, tb = _tokens(a), _tokens(b)
     if not ta or not tb:
         return False
-    # Require all tokens from the shorter name to appear in the longer
     shorter, longer = (ta, tb) if len(ta) <= len(tb) else (tb, ta)
     return shorter.issubset(longer)
 
@@ -119,7 +141,6 @@ def _entry_active(entry: dict[str, Any], now: datetime, tz_name: str) -> bool:
         return True
     start = _parse_dt(entry.get("valid_from"))
     end = _parse_dt(entry.get("valid_until"))
-    # No window set → treat as always active (pilot-friendly)
     if start is None and end is None:
         return True
     if start and now < start:
@@ -158,6 +179,7 @@ def _append_event(event: dict[str, Any]) -> None:
 
 
 def _send_sms(body: str) -> dict[str, Any]:
+    """Optional legacy path only — not used in autonomous default."""
     if not ONCALL_PHONE:
         log.warning("ONCALL_PHONE not set — SMS: %s", body)
         return {"channel": "log", "status": "logged", "body": body}
@@ -195,6 +217,14 @@ def _myq_configured() -> bool:
 
 def _try_myq_unlock(entrance: str) -> dict[str, Any] | None:
     """Attempt Partner API unlock. Returns None if not configured."""
+    if SIMULATE_MYQ_OPEN:
+        return {
+            "channel": "simulate",
+            "status": "opened",
+            "entrance_id": entrance or MYQ_ENTRANCE_ID or "main",
+            "note": "SIMULATE_MYQ_OPEN=true — demo only, no physical unlock",
+        }
+
     if not _myq_configured():
         return None
 
@@ -252,6 +282,13 @@ def _try_myq_unlock(entrance: str) -> dict[str, Any] | None:
         }
 
 
+def _deny_message(detail: str) -> str:
+    return (
+        f"{detail} Do not open. Tell the visitor the host must add a myQ guest pass, "
+        "then they may try again or call back. No human attendant is available overnight."
+    )
+
+
 def _verify_retell(raw_body: str, signature: str | None) -> None:
     if not VERIFY_SIGNATURES:
         return
@@ -303,8 +340,9 @@ async def _read_verified_json(
 @app.get("/")
 def root() -> dict[str, Any]:
     return {
-        "service": "virtual-gate-guard-retell-webhooks",
-        "version": "0.3.0",
+        "service": "welift-autonomous-gate-webhooks",
+        "version": VERSION,
+        "mode": "autonomous" if AUTONOMOUS else "legacy_human_sms",
         "endpoints": [
             "GET /health",
             "POST /tools/check_guest_list",
@@ -318,19 +356,19 @@ def root() -> dict[str, Any]:
 @app.get("/health")
 def health() -> dict[str, Any]:
     guest_ok = bool(GUEST_LIST_JSON) or GUEST_LIST_PATH.exists()
+    unlock_ready = _myq_configured() or SIMULATE_MYQ_OPEN
     return {
-        "status": "ok",
-        "version": "0.3.0",
+        "status": "ok" if (guest_ok and (unlock_ready or not AUTONOMOUS)) else "degraded",
+        "version": VERSION,
+        "autonomous": AUTONOMOUS,
         "community_default": DEFAULT_COMMUNITY,
         "guest_list_ready": guest_ok,
-        "oncall_configured": bool(ONCALL_PHONE),
-        "twilio_configured": bool(
-            TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER
-        ),
         "myq_api_configured": _myq_configured(),
+        "simulate_myq_open": SIMULATE_MYQ_OPEN,
+        "unlock_ready": unlock_ready,
+        "human_sms_fallback": HUMAN_SMS_FALLBACK,
         "verify_signatures": VERIFY_SIGNATURES,
         "serverless": SERVERLESS,
-        "phase": 2 if _myq_configured() else 1,
     }
 
 
@@ -347,23 +385,29 @@ async def check_guest_list(
     host = (args.get("host_name_or_address") or "").strip()
     visit_type = (args.get("visit_type") or "").strip().lower()
 
+    # Autonomous night policy: ambiguous / ops → deny (log), never wake a human.
     if visit_type == "ops":
         result = {
-            "decision": "escalate",
+            "decision": "deny",
             "confidence": "high",
-            "message": (
-                "Ops / management call — escalate to on-call. Do not open the gate."
+            "message": _deny_message(
+                "Ops / management call logged. Overnight AI does not open for ops."
             ),
             "community_name": community,
+            "logged_for_daytime_review": True,
         }
         _append_event({"tool": "check_guest_list", "args": args, "result": result})
         return JSONResponse(result)
 
     if not visitor or not host:
         result = {
-            "decision": "escalate",
+            "decision": "deny",
             "confidence": "low",
-            "message": "Need both visitor name and host name or address before deciding.",
+            "message": (
+                "Need both visitor name and host name or address. "
+                "Ask once more; if still incomplete, deny — do not open."
+            ),
+            "community_name": community,
         }
         _append_event({"tool": "check_guest_list", "args": args, "result": result})
         return JSONResponse(result)
@@ -372,9 +416,10 @@ async def check_guest_list(
         book = _load_guest_list()
     except (FileNotFoundError, json.JSONDecodeError) as exc:
         result = {
-            "decision": "escalate",
+            "decision": "deny",
             "confidence": "low",
-            "message": str(exc),
+            "message": _deny_message(f"Guest list unavailable ({exc})."),
+            "community_name": community,
         }
         _append_event({"tool": "check_guest_list", "args": args, "result": result})
         return JSONResponse(result)
@@ -399,48 +444,53 @@ async def check_guest_list(
     if len(matches) == 1:
         m = matches[0]
         entry_type = (m.get("visit_type") or "").lower()
-        if visit_type and entry_type and visit_type != entry_type:
-            if visit_type in {"delivery", "vendor"} or entry_type in {
-                "delivery",
-                "vendor",
-            }:
-                decision, confidence = "escalate", "medium"
-                message = (
-                    "Possible match but visit type differs — escalate to on-call."
-                )
-            else:
-                decision, confidence = "approve", "medium"
-                message = (
-                    f"Approved (visit type soft mismatch): {m.get('visitor_name')} "
-                    f"visiting {m.get('host_name')} ({m.get('host_address')}). "
-                    f"Notes: {m.get('notes') or 'none'}. Call open_gate next."
-                )
-        else:
-            decision, confidence = "approve", "high"
-            message = (
-                f"Approved: {m.get('visitor_name')} visiting "
-                f"{m.get('host_name')} ({m.get('host_address')}). "
-                f"Notes: {m.get('notes') or 'none'}. Call open_gate next."
+        type_conflict = bool(
+            visit_type
+            and entry_type
+            and visit_type != entry_type
+            and (
+                visit_type in {"delivery", "vendor"}
+                or entry_type in {"delivery", "vendor"}
             )
-        result = {
-            "decision": decision,
-            "confidence": confidence,
-            "matched_entry": {
-                "visitor_name": m.get("visitor_name"),
-                "host_name": m.get("host_name"),
-                "host_address": m.get("host_address"),
-                "visit_type": m.get("visit_type"),
-            },
-            "message": message,
-            "community_name": community,
-        }
+        )
+        if type_conflict:
+            result = {
+                "decision": "deny",
+                "confidence": "medium",
+                "message": _deny_message(
+                    "Possible name match but visit type conflicts with the list."
+                ),
+                "matched_entry": {
+                    "visitor_name": m.get("visitor_name"),
+                    "host_name": m.get("host_name"),
+                    "host_address": m.get("host_address"),
+                    "visit_type": m.get("visit_type"),
+                },
+                "community_name": community,
+            }
+        else:
+            result = {
+                "decision": "approve",
+                "confidence": "high",
+                "matched_entry": {
+                    "visitor_name": m.get("visitor_name"),
+                    "host_name": m.get("host_name"),
+                    "host_address": m.get("host_address"),
+                    "visit_type": m.get("visit_type"),
+                },
+                "message": (
+                    f"Approved: {m.get('visitor_name')} visiting "
+                    f"{m.get('host_name')} ({m.get('host_address')}). "
+                    f"Notes: {m.get('notes') or 'none'}. Call open_gate next."
+                ),
+                "community_name": community,
+            }
     elif len(matches) > 1:
         result = {
-            "decision": "escalate",
+            "decision": "deny",
             "confidence": "low",
-            "message": (
-                f"Multiple guest-list matches ({len(matches)}). "
-                "Escalate; do not open."
+            "message": _deny_message(
+                f"Multiple guest-list matches ({len(matches)}) — too ambiguous."
             ),
             "community_name": community,
         }
@@ -448,10 +498,7 @@ async def check_guest_list(
         result = {
             "decision": "deny",
             "confidence": "high",
-            "message": (
-                "No guest-list match. Deny open. Tell visitor the host must add a "
-                "myQ guest pass, then they may call back."
-            ),
+            "message": _deny_message("No guest-list match."),
             "community_name": community,
         }
 
@@ -477,51 +524,55 @@ async def open_gate(
     if myq and myq.get("status") == "opened":
         result = {
             "status": "opened",
-            "phase": 2,
+            "autonomous": True,
             "message": (
-                "Gate unlock commanded via myQ API. Tell visitor to wait for the "
-                "gate to move."
+                "Gate unlock commanded. Tell visitor to wait for the gate to move. "
+                "Do not mention a human attendant."
             ),
             "myq": myq,
         }
         _append_event({"tool": "open_gate", "args": args, "result": result})
         return JSONResponse(result)
 
+    # Autonomous default: no human wake. Fail closed.
+    if AUTONOMOUS and not HUMAN_SMS_FALLBACK:
+        detail = (
+            "myQ unlock failed."
+            if myq and myq.get("status") == "error"
+            else "myQ Partner API is not configured (set MYQ_* env vars)."
+        )
+        result = {
+            "status": "failed",
+            "autonomous": True,
+            "message": (
+                f"{detail} Do NOT claim the gate is opening. Do NOT say a human is "
+                "coming. Apologize briefly and tell the visitor the host must send a "
+                "myQ guest pass, then try the tablet again or call back."
+            ),
+            "myq": myq,
+            "community_name": community,
+            "visitor_name": visitor,
+            "host_name_or_address": host,
+            "reason": reason,
+        }
+        _append_event({"tool": "open_gate", "args": args, "result": result})
+        return JSONResponse(result)
+
+    # Legacy human SMS path (explicit opt-in only)
     sms_body = (
         f"[{community}] OPEN {visitor} visiting {host} @ {entrance}. "
         f"{reason or 'guest list approve'} — unlock myQ NOW."
     )
-    if myq and myq.get("status") == "error":
-        sms_body = (
-            f"[{community}] myQ API FAILED — OPEN {visitor} visiting {host} "
-            f"@ {entrance}. Unlock myQ NOW. err={myq.get('error', '')[:120]}"
-        )
-
     sms = _send_sms(sms_body)
-
-    if sms.get("status") == "error":
-        result = {
-            "status": "failed",
-            "phase": 1,
-            "message": (
-                "Could not notify on-call. Tell visitor to wait and escalate. "
-                f"Error: {sms.get('error')}"
-            ),
-            "sms": sms,
-            "myq": myq,
-        }
-    else:
-        result = {
-            "status": "pending_human_open",
-            "phase": 1,
-            "message": (
-                "On-call notified to unlock in myQ. Tell visitor to wait for the "
-                "gate to move. Do not claim it is already open until they see motion."
-            ),
-            "sms": sms,
-            "myq": myq,
-        }
-
+    result = {
+        "status": "pending_human_open",
+        "autonomous": False,
+        "message": (
+            "Legacy SMS fallback: on-call notified. Prefer disabling HUMAN_SMS_FALLBACK."
+        ),
+        "sms": sms,
+        "myq": myq,
+    }
     _append_event({"tool": "open_gate", "args": args, "result": result})
     return JSONResponse(result)
 
@@ -531,6 +582,7 @@ async def escalate_to_oncall(
     request: Request,
     x_retell_signature: str | None = Header(default=None),
 ) -> JSONResponse:
+    """Kept for Retell tool compatibility. Autonomous: log + deny — no SMS wake."""
     payload = await _read_verified_json(request, x_retell_signature)
     args = _extract_args(payload)
 
@@ -540,18 +592,38 @@ async def escalate_to_oncall(
     summary = (args.get("summary") or "escalation").strip()
     urgency = (args.get("urgency") or "normal").strip()
 
+    log_entry = {
+        "community": community,
+        "visitor": visitor,
+        "host": host,
+        "summary": summary,
+        "urgency": urgency,
+    }
+
+    if AUTONOMOUS and not HUMAN_SMS_FALLBACK:
+        result = {
+            "status": "logged_deny",
+            "autonomous": True,
+            "decision": "deny",
+            "message": (
+                "Logged for daytime review. Do not open. Do not say a human is on the "
+                "way. Tell the visitor you cannot verify the visit overnight and the "
+                "host must add a myQ guest pass."
+            ),
+            "log": log_entry,
+        }
+        _append_event({"tool": "escalate_to_oncall", "args": args, "result": result})
+        return JSONResponse(result)
+
     sms_body = (
         f"[{community}] ESCALATE ({urgency}) {visitor or 'n/a'} / "
         f"{host or 'n/a'}: {summary}"
     )
     sms = _send_sms(sms_body)
-
     result = {
         "status": "escalated" if sms.get("status") != "error" else "failed",
-        "message": (
-            "On-call notified. Tell visitor you are checking with the attendant. "
-            "Do not open the gate."
-        ),
+        "autonomous": False,
+        "message": "Legacy SMS escalation sent.",
         "sms": sms,
     }
     _append_event({"tool": "escalate_to_oncall", "args": args, "result": result})

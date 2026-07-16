@@ -1,7 +1,6 @@
-# myQ Remote-Open Path — Autonomous Target
+# myQ Remote-Open Path — Autonomous Product
 
-**Q1 goal:** Fully autonomous verify + open via myQ Partner API.  
-**August pilot:** SMS bridge is **OK** for 30–60 nights if disclosed as human-confirmed.
+**Product rule:** AI verifies + **myQ Partner API** opens. No overnight human. No SMS wake.
 
 ---
 
@@ -9,34 +8,36 @@
 
 | Question | Answer |
 |----------|--------|
-| SMS-forever for 1-HOA trial? | **Yes** for technical learning (30–60 nights). Not a scale model. |
-| Pursue API before paid pilot? | **Yes — start Week 0.** Paid contract should assume API or dedicated SOC account, not Lucas at 2am forever. |
-| Claim “autonomous” in August? | **No** until checklist below passes. Say “AI verification + human-confirmed open” for SMS phase. |
+| SMS / human unlock overnight? | **No** — rejected as product path |
+| Cell demos without API? | `SIMULATE_MYQ_OPEN=true` only |
+| Claim autonomous before API? | **No** — voice demo ≠ live open |
+| When to email myQ? | **Week 0 — critical path** |
 
-**Realistic API timeline:** partner review often **4–12+ weeks** — plan SMS for entire first pilot month.
+Partner review often **4–12+ weeks**. Start now; do not design the product around waiting while awake at 2am.
 
 ---
 
 ## Email template — integrations@myq.com
 
 ```
-Subject: Partner API request — We Lift overnight virtual gate attendant (Florida HOA pilot)
+Subject: Partner API request — We Lift autonomous overnight gate attendant (Florida HOA)
 
 Hello myQ Community Integrations team,
 
-We Lift provides overnight (8pm–6am) virtual gate attendant services for gated
-communities in Southwest Florida. Our pilot site is The Inlets, an existing
-myQ Community + LiftMaster CAP installation.
+We Lift provides autonomous overnight (8pm–6am) virtual gate attendant services
+for gated communities in Southwest Florida. Pilot site: The Inlets
+(myQ Community + LiftMaster CAP).
 
-We are a software/service partner (not a PMS). We need API access to:
-• Remote unlock designated entrance(s) after visitor verification
+We need Partner API access to:
+• Remote unlock designated entrance(s) after AI visitor verification
 • Read access event history for board reporting (with HOA authorization)
-• Optionally manage/time-bound guest credentials in later phases
+• Optionally read/time-bound guest credentials in later phases
 
-Current stack:
+Stack:
 • Voice: Retell AI at the gate tablet Call Attendant number
-• Verification: guest list + post orders via our webhook
-• Phase 1: human unlock via myQ app; Phase 2: API unlock from open_gate
+• Verification: guest list + post orders via our webhook (approve/deny only)
+• Unlock: Partner API from our open_gate tool — fail closed if API errors
+• No overnight human attendant
 
 Pilot: 1 HOA, 1 main gate, Manatee/Sarasota County FL.
 LiftMaster dealer of record: [DEALER NAME, if known].
@@ -46,6 +47,7 @@ Please advise:
 2. Sandbox / test facility requirements
 3. Whether The Inlets' dealer must enable integration on the facility
 4. Pricing or minimum commit for API access
+5. Exact unlock endpoint path + auth scheme (we will align MYQ_UNLOCK_PATH)
 
 Company: We Lift [LLC name when formed]
 Contact: Lucas Despot · [YOUR EMAIL] · [YOUR PHONE]
@@ -54,49 +56,30 @@ Thank you,
 Lucas Despot
 ```
 
-**Parallel:** Ask The Inlets dealer on discovery call whether they've enabled API integrations at other properties.
+---
+
+## Confirmed autonomous checklist
+
+Before telling the board **“autonomous verify + open”**:
+
+- [ ] myQ Partner API credentials live in webhook env
+- [ ] `SIMULATE_MYQ_OPEN=false`, `HUMAN_SMS_FALLBACK=false`
+- [ ] ≥ 20 consecutive API opens with **zero** wrong-admit incidents
+- [ ] End-to-end open ≤ 60 sec in ≥ 95% of tests
+- [ ] API error → fail closed (deny script); logged for daytime review
+- [ ] Every open in events log + myQ activity correlation
+- [ ] Post orders: deny-when-unsure overnight policy agreed with CAM
 
 ---
 
-## Hybrid mode (aligned with Q1)
+## Implementation (welift v0.4+)
 
-```
-Nights 1–14:   AI verify + SMS Lucas for ALL opens
-Nights 15–30:  AI verify + auto-open only exact guest-list matches (API or fast SMS)
-Nights 31+:    API primary; SMS fallback on API error; escalate on ambiguity
-```
+`webhook/main.py` `open_gate`:
 
----
+1. Attempt myQ Partner API unlock (`MYQ_*` env)
+2. On success → `status: opened`
+3. On failure / missing config → `status: failed` (agent denies; no human SMS)
 
-## “Confirmed autonomous” checklist
+`escalate_to_oncall` → `logged_deny` only (daytime audit).
 
-Before telling The Inlets board **“autonomous verify + open”**:
-
-- [ ] myQ Partner API **or** dedicated SOC service account with documented unlock wrapper
-- [ ] **≥ 20 consecutive** API opens with **zero** wrong-admit incidents
-- [ ] End-to-end open **≤ 60 sec** in ≥ 95% of tests (API path)
-- [ ] SMS fallback tested when API returns error
-- [ ] Every open in `data/events.jsonl` + myQ activity log correlation
-- [ ] Post orders signed; CAM knows escalation path
-- [ ] Insurance + licensing path underway for paid phase
-- [ ] Retell containment ≥ 70% without human ping ([02-pilot-math/one-hoa-full-ai-trial-deep-dive.md](../../02-pilot-math/one-hoa-full-ai-trial-deep-dive.md) §10)
-
----
-
-## Implementation note (welift)
-
-**Code ready (v0.3):** `webhook/main.py` `open_gate` already attempts myQ Partner API when these env vars are set, then falls back to SMS:
-
-| Env | Purpose |
-|-----|---------|
-| `MYQ_API_BASE` | Partner API host |
-| `MYQ_API_KEY` | Bearer token |
-| `MYQ_FACILITY_ID` | Facility id |
-| `MYQ_ENTRANCE_ID` | Default entrance |
-| `MYQ_UNLOCK_PATH` | Optional path template (defaults to `/v1/facilities/{facility_id}/entrances/{entrance_id}/unlock`) |
-
-Adjust `MYQ_UNLOCK_PATH` to match whatever path myQ documents after partner acceptance — the stub uses a plausible REST shape, not a guaranteed official path.
-
-`GET /health` reports `"myq_api_configured": true` and `"phase": 2` when all required vars are present.
-
-Reference: [README.md](../../README.md) Phase 2 · [webhook/.env.example](../../webhook/.env.example) · [01-metro-validation/liftmaster-integration.md](../../01-metro-validation/liftmaster-integration.md) §2
+Reference: [on-call-sms-sla.md](on-call-sms-sla.md) · [webhook/.env.example](../../webhook/.env.example)
