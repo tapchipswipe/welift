@@ -1,8 +1,10 @@
-"""We Lift credential engine — mint, SMS, revoke, verify proof PINs.
+"""We Lift credential + vendor roster engine.
 
-Persistent JSON store (migrate to Postgres later). One active code per
-community × company per day window. Plaintext code returned only at mint/send time;
-store keeps code_hash + last4.
+Persistent JSON stores (migrate to Postgres later):
+- vendors.json — CAM-authorized companies (owner vs dispatch phones)
+- credentials.json — hashed PINs + delivery audit
+
+Plaintext code returned only at mint/send time.
 """
 
 from __future__ import annotations
@@ -13,6 +15,7 @@ import logging
 import os
 import re
 import secrets
+import shutil
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -25,16 +28,39 @@ DATA_DIR = APP_DIR.parent / "data"
 CREDENTIALS_PATH = Path(
     os.getenv("CREDENTIALS_PATH", str(DATA_DIR / "credentials.json"))
 )
-VENDORS_PATH = Path(os.getenv("VENDORS_PATH", str(DATA_DIR / "vendors.seed.json")))
+VENDORS_PATH = Path(os.getenv("VENDORS_PATH", str(DATA_DIR / "vendors.json")))
+VENDORS_SEED_PATH = Path(
+    os.getenv("VENDORS_SEED_PATH", str(DATA_DIR / "vendors.seed.json"))
+)
 
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
 TWILIO_FROM_NUMBER = os.getenv("TWILIO_FROM_NUMBER", "")
-
-# Allow log-only SMS when Twilio unset (local/dev); still mints real codes
 SMS_LOG_ONLY = os.getenv("SMS_LOG_ONLY", "false").lower() in {"1", "true", "yes"}
 
 _CODE_RE = re.compile(r"^\d{4,8}$")
+_WINDOW_RE = re.compile(
+    r"^(?P<days>[A-Za-z,\-\s]+)\s+(?P<start>\d{1,2}:\d{2})\s*-\s*(?P<end>\d{1,2}:\d{2})$"
+)
+_DAY_ALIASES = {
+    "mon": 0,
+    "monday": 0,
+    "tue": 1,
+    "tues": 1,
+    "tuesday": 1,
+    "wed": 2,
+    "wednesday": 2,
+    "thu": 3,
+    "thur": 3,
+    "thurs": 3,
+    "thursday": 3,
+    "fri": 4,
+    "friday": 4,
+    "sat": 5,
+    "saturday": 5,
+    "sun": 6,
+    "sunday": 6,
+}
 
 
 def _now() -> datetime:
@@ -88,13 +114,13 @@ def _ensure_e164(phone: str) -> str:
     raise ValueError("Phone must be E.164 or 10-digit US number")
 
 
-def _empty_store() -> dict[str, Any]:
+def _empty_cred_store() -> dict[str, Any]:
     return {"credentials": [], "deliveries": []}
 
 
 def load_store() -> dict[str, Any]:
     if not CREDENTIALS_PATH.exists():
-        return _empty_store()
+        return _empty_cred_store()
     with CREDENTIALS_PATH.open(encoding="utf-8") as f:
         data = json.load(f)
     data.setdefault("credentials", [])
@@ -111,30 +137,203 @@ def save_store(store: dict[str, Any]) -> None:
     tmp.replace(CREDENTIALS_PATH)
 
 
+def _default_vendor_book() -> dict[str, Any]:
+    return {
+        "community_name": "The Inlets",
+        "timezone": "America/New_York",
+        "notes": "CAM-authorized vendor roster",
+        "vendors": [],
+    }
+
+
+def ensure_vendors_file() -> None:
+    """Seed vendors.json from vendors.seed.json on first run."""
+    if VENDORS_PATH.exists():
+        return
+    VENDORS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    if VENDORS_SEED_PATH.exists():
+        shutil.copy(VENDORS_SEED_PATH, VENDORS_PATH)
+        log.info("Seeded vendor roster from %s", VENDORS_SEED_PATH)
+    else:
+        save_vendors(_default_vendor_book())
+
+
 def load_vendors() -> dict[str, Any]:
-    if not VENDORS_PATH.exists():
-        return {
-            "community_name": "The Inlets",
-            "timezone": "America/New_York",
-            "vendors": [],
-        }
+    ensure_vendors_file()
     with VENDORS_PATH.open(encoding="utf-8") as f:
-        return json.load(f)
+        data = json.load(f)
+    data.setdefault("community_name", "The Inlets")
+    data.setdefault("timezone", "America/New_York")
+    data.setdefault("vendors", [])
+    return data
 
 
-def find_vendor(company_name: str) -> dict[str, Any] | None:
+def save_vendors(book: dict[str, Any]) -> None:
+    VENDORS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    tmp = VENDORS_PATH.with_suffix(".tmp")
+    with tmp.open("w", encoding="utf-8") as f:
+        json.dump(book, f, indent=2)
+        f.write("\n")
+    tmp.replace(VENDORS_PATH)
+
+
+def list_vendors(*, include_inactive: bool = False) -> list[dict[str, Any]]:
     book = load_vendors()
+    out = []
+    for v in book.get("vendors", []):
+        if not include_inactive and v.get("active") is False:
+            continue
+        out.append(v)
+    return out
+
+
+def find_vendor(company_name: str, *, include_inactive: bool = False) -> dict[str, Any] | None:
     target = _normalize_company(company_name)
     if not target:
         return None
-    for v in book.get("vendors", []):
-        if _normalize_company(v.get("company_name", "")) == target:
-            return v
-        # fuzzy contains
+    for v in list_vendors(include_inactive=include_inactive):
         cn = _normalize_company(v.get("company_name", ""))
-        if target in cn or cn in target:
+        if cn == target or target in cn or cn in target:
             return v
     return None
+
+
+def _validate_vendor_payload(payload: dict[str, Any], *, partial: bool = False) -> dict[str, Any]:
+    company = (payload.get("company_name") or "").strip()
+    if not company and not partial:
+        raise ValueError("company_name required")
+    contact_type = (payload.get("access_contact_type") or "owner").strip().lower()
+    if contact_type not in {"owner", "dispatch"}:
+        raise ValueError("access_contact_type must be owner or dispatch")
+    phone_raw = (payload.get("access_phone") or "").strip()
+    phone = _ensure_e164(phone_raw) if phone_raw else ""
+    if not phone and not partial:
+        raise ValueError("access_phone required")
+    window = (payload.get("window") or "Mon-Fri 07:00-18:00").strip()
+    out: dict[str, Any] = {
+        "company_name": company,
+        "access_contact_type": contact_type,
+        "access_phone": phone,
+        "window": window,
+        "invite_email": (payload.get("invite_email") or "").strip() or None,
+        "notes": (payload.get("notes") or "").strip() or None,
+        "active": bool(payload.get("active", True)),
+    }
+    return out
+
+
+def upsert_vendor(payload: dict[str, Any]) -> dict[str, Any]:
+    """Create or update a vendor by company_name (case-insensitive)."""
+    data = _validate_vendor_payload(payload)
+    book = load_vendors()
+    norm = _normalize_company(data["company_name"])
+    now = _iso(_now())
+    for i, v in enumerate(book["vendors"]):
+        if _normalize_company(v.get("company_name", "")) == norm:
+            updated = {**v, **data, "updated_at": now}
+            if not updated.get("created_at"):
+                updated["created_at"] = now
+            book["vendors"][i] = updated
+            save_vendors(book)
+            return updated
+    record = {**data, "created_at": now, "updated_at": now}
+    book["vendors"].append(record)
+    save_vendors(book)
+    return record
+
+
+def set_vendor_active(company_name: str, active: bool) -> dict[str, Any]:
+    book = load_vendors()
+    norm = _normalize_company(company_name)
+    for i, v in enumerate(book["vendors"]):
+        if _normalize_company(v.get("company_name", "")) == norm:
+            v["active"] = active
+            v["updated_at"] = _iso(_now())
+            book["vendors"][i] = v
+            save_vendors(book)
+            return v
+    raise ValueError(f"Vendor not found: {company_name}")
+
+
+def _parse_days(days_part: str) -> set[int]:
+    days_part = days_part.strip().lower().replace(" ", "")
+    if not days_part or days_part in {"daily", "everyday", "as-needed", "asneeded", "any"}:
+        return {0, 1, 2, 3, 4, 5, 6}
+    out: set[int] = set()
+    for chunk in days_part.split(","):
+        if "-" in chunk and not chunk.startswith("-"):
+            a, b = chunk.split("-", 1)
+            if a in _DAY_ALIASES and b in _DAY_ALIASES:
+                start, end = _DAY_ALIASES[a], _DAY_ALIASES[b]
+                if start <= end:
+                    out.update(range(start, end + 1))
+                else:
+                    out.update(list(range(start, 7)) + list(range(0, end + 1)))
+                continue
+        if chunk in _DAY_ALIASES:
+            out.add(_DAY_ALIASES[chunk])
+    return out or {0, 1, 2, 3, 4, 5, 6}
+
+
+def _parse_hhmm(value: str) -> tuple[int, int]:
+    h, m = value.split(":")
+    return int(h), int(m)
+
+
+def vendor_window_allows(
+    vendor: dict[str, Any] | None,
+    *,
+    when: datetime | None = None,
+    tz_name: str | None = None,
+) -> dict[str, Any]:
+    """Check if now falls in vendor's authorized window."""
+    if not vendor:
+        return {"ok": True, "reason": "unknown_vendor_no_window"}
+    window = (vendor.get("window") or "").strip()
+    if not window or window.lower() in {"as-needed", "as needed", "any", "always"}:
+        return {"ok": True, "reason": "as_needed"}
+
+    book = load_vendors()
+    tz = tz_name or book.get("timezone") or "America/New_York"
+    try:
+        from zoneinfo import ZoneInfo
+
+        local = (when or _now()).astimezone(ZoneInfo(tz))
+    except Exception:  # noqa: BLE001
+        local = (when or _now()).astimezone(timezone.utc)
+
+    m = _WINDOW_RE.match(window)
+    if not m:
+        # Unparseable → allow (CAM free-text) but note it
+        return {"ok": True, "reason": "unparsed_window", "window": window}
+
+    days = _parse_days(m.group("days"))
+    if local.weekday() not in days:
+        return {
+            "ok": False,
+            "reason": "outside_days",
+            "window": window,
+            "local": local.isoformat(),
+        }
+
+    sh, sm = _parse_hhmm(m.group("start"))
+    eh, em = _parse_hhmm(m.group("end"))
+    minutes = local.hour * 60 + local.minute
+    start_m = sh * 60 + sm
+    end_m = eh * 60 + em
+    if start_m <= end_m:
+        in_hours = start_m <= minutes <= end_m
+    else:
+        # overnight window
+        in_hours = minutes >= start_m or minutes <= end_m
+    if not in_hours:
+        return {
+            "ok": False,
+            "reason": "outside_hours",
+            "window": window,
+            "local": local.isoformat(),
+        }
+    return {"ok": True, "reason": "in_window", "window": window}
 
 
 def _end_of_local_day(tz_name: str = "America/New_York") -> datetime:
@@ -146,6 +345,27 @@ def _end_of_local_day(tz_name: str = "America/New_York") -> datetime:
         return end.astimezone(timezone.utc)
     except Exception:  # noqa: BLE001
         return _now() + timedelta(hours=12)
+
+
+def _window_end_today(vendor: dict[str, Any] | None, tz_name: str) -> datetime:
+    """Expire at end of today's window hours when parseable, else end of local day."""
+    if not vendor:
+        return _end_of_local_day(tz_name)
+    window = (vendor.get("window") or "").strip()
+    m = _WINDOW_RE.match(window)
+    if not m:
+        return _end_of_local_day(tz_name)
+    try:
+        from zoneinfo import ZoneInfo
+
+        local = datetime.now(ZoneInfo(tz_name))
+        eh, em = _parse_hhmm(m.group("end"))
+        end = local.replace(hour=eh, minute=em, second=0, microsecond=0)
+        if end < local:
+            end = end + timedelta(days=1)
+        return end.astimezone(timezone.utc)
+    except Exception:  # noqa: BLE001
+        return _end_of_local_day(tz_name)
 
 
 def mint_credential(
@@ -163,18 +383,16 @@ def mint_credential(
 
     vendor = find_vendor(company_name)
     display_company = vendor["company_name"] if vendor else company_name
+    tz = load_vendors().get("timezone") or "America/New_York"
 
     code = f"{secrets.randbelow(1_000_000):06d}"
     now = _now()
     if hours_valid is not None:
         expires = now + timedelta(hours=hours_valid)
     else:
-        expires = _end_of_local_day(
-            (load_vendors().get("timezone") or "America/New_York")
-        )
+        expires = _window_end_today(vendor, tz)
 
     store = load_store()
-    # Revoke prior active for same community×company
     norm = _normalize_company(display_company)
     for cred in store["credentials"]:
         if (
@@ -240,7 +458,6 @@ def _active_credential(community: str, company_name: str) -> dict[str, Any] | No
         and _normalize_company(c.get("company_name", "")) == norm
     ]
     if not candidates:
-        # also try fuzzy vendor resolve
         vendor = find_vendor(company_name)
         if vendor:
             norm2 = _normalize_company(vendor["company_name"])
@@ -253,7 +470,6 @@ def _active_credential(community: str, company_name: str) -> dict[str, Any] | No
             ]
     if not candidates:
         return None
-    # newest
     candidates.sort(key=lambda c: c.get("created_at", ""), reverse=True)
     cred = candidates[0]
     until = _parse_iso(cred.get("valid_until"))
@@ -327,38 +543,51 @@ def send_code(
     *,
     community: str,
     company_name: str,
-    phone: str,
+    phone: str | None = None,
     actor: str = "access_ui",
-    reuse_active: bool = True,
+    reuse_active: bool = False,
+    override_window: bool = False,
 ) -> dict[str, Any]:
-    """Mint (or reuse active) credential and SMS it to phone."""
+    """Mint (rotate) credential and SMS to roster phone or override phone.
+
+    Default: always rotate on send so CAM gets a fresh code and we know plaintext.
+    """
     community = (community or "The Inlets").strip()
     company_name = (company_name or "").strip()
-    to = _ensure_e164(phone)
+    vendor = find_vendor(company_name)
+    if vendor and vendor.get("active") is False:
+        raise ValueError("Vendor is deactivated — reactivate before sending a code")
 
-    code: str
-    cred_meta: dict[str, Any]
-    active = _active_credential(community, company_name) if reuse_active else None
-    if active and reuse_active:
-        # Need plaintext to resend — remint/rotate for simplicity so we always know code
-        minted = mint_credential(
-            community=community, company_name=company_name, actor=actor
+    window_check = vendor_window_allows(vendor)
+    if not window_check.get("ok") and not override_window:
+        raise ValueError(
+            f"Outside authorized window ({window_check.get('window')}). "
+            "Pass override_window=true for CAM emergency send."
         )
-        code = minted["code"]
-        cred_meta = minted
-    else:
-        minted = mint_credential(
-            community=community, company_name=company_name, actor=actor
-        )
-        code = minted["code"]
-        cred_meta = minted
+
+    to_raw = (phone or "").strip() or (vendor or {}).get("access_phone") or ""
+    to = _ensure_e164(to_raw)
+
+    if reuse_active:
+        active = _active_credential(community, company_name)
+        if active:
+            # Cannot resend unknown plaintext — rotate
+            pass
+
+    minted = mint_credential(
+        community=community, company_name=company_name, actor=actor
+    )
+    code = minted["code"]
+    cred_meta = minted
 
     until_local = cred_meta.get("valid_until", "")
+    contact = (vendor or {}).get("access_contact_type") or "access"
     body = (
         f"{community} — {cred_meta['company_name']} vendor access\n"
         f"Keypad code: {code}\n"
         f"Valid until (UTC): {until_local}\n"
-        f"If keypad fails: Call Attendant, say company + this PIN."
+        f"If keypad fails: Call Attendant, say company + this PIN.\n"
+        f"(Sent to {contact} contact)"
     )
     sms = send_sms(to, body)
 
@@ -374,13 +603,13 @@ def send_code(
         "actor": actor,
         "ts": _iso(_now()),
         "last4": cred_meta.get("last4"),
+        "window_override": override_window,
     }
     if sms.get("sid"):
         delivery["sid"] = sms["sid"]
     if sms.get("error"):
         delivery["error"] = sms["error"]
     store["deliveries"].append(delivery)
-    # keep last 200
     store["deliveries"] = store["deliveries"][-200:]
     save_store(store)
 
@@ -393,7 +622,7 @@ def send_code(
         "credential_id": cred_meta["id"],
         "sms": sms,
         "delivery": delivery,
-        # plaintext only in API response for presenter confirmation — not stored again
+        "window": window_check,
         "code": code,
     }
 
@@ -416,3 +645,22 @@ def list_active_credentials() -> list[dict[str, Any]]:
             continue
         out.append({k: v for k, v in c.items() if k != "code_hash"})
     return out
+
+
+def list_recent_credentials(limit: int = 30) -> list[dict[str, Any]]:
+    store = load_store()
+    items = sorted(
+        store.get("credentials", []),
+        key=lambda c: c.get("created_at", ""),
+        reverse=True,
+    )
+    return [{k: v for k, v in c.items() if k != "code_hash"} for c in items[:limit]]
+
+
+def twilio_configured() -> bool:
+    return bool(
+        TWILIO_ACCOUNT_SID
+        and TWILIO_AUTH_TOKEN
+        and TWILIO_FROM_NUMBER
+        and not SMS_LOG_ONLY
+    )

@@ -33,6 +33,7 @@ def main_test() -> int:
     assert body["status"] == "ok"
     assert body["autonomous"] is True
     assert body["unlock_ready"] is True
+    assert body["version"] == "0.6.0"
     print("health OK", body)
 
     # Vendors require proof PIN — without it, ask for PIN (do not approve).
@@ -56,7 +57,7 @@ def main_test() -> int:
 
     send = client.post(
         "/access/send_code",
-        json={"company_name": "GreenSide Lawn", "phone": "+19415559876"},
+        json={"company_name": "GreenSide Lawn", "phone": "+19415559876", "override_window": True},
     )
     assert send.status_code == 200, send.text
     code = send.json()["code"]

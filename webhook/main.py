@@ -75,12 +75,14 @@ MYQ_UNLOCK_PATH = os.getenv(
     "MYQ_UNLOCK_PATH", "/v1/facilities/{facility_id}/entrances/{entrance_id}/unlock"
 )
 
-VERSION = "0.5.0"
+VERSION = "0.6.0"
+
+RETELL_DID = os.getenv("RETELL_DID", "").strip()
 
 app = FastAPI(
-    title="We Lift — Access + gate tools",
+    title="We Lift — CAM Access Desk + Call Attendant",
     version=VERSION,
-    description="Vendor codes via SMS + Retell AI proof PIN + myQ unlock",
+    description="CAM roster + SMS codes + Retell AI proof PIN + myQ unlock",
 )
 app.add_middleware(
     CORSMiddleware,
@@ -343,7 +345,12 @@ def root() -> dict[str, Any]:
         "endpoints": [
             "GET /health",
             "GET /access",
+            "GET /gate",
             "GET /access/meta",
+            "GET /access/vendors",
+            "POST /access/vendors",
+            "PATCH /access/vendors/{company}",
+            "GET /access/audit",
             "POST /access/send_code",
             "POST /access/revoke",
             "POST /tools/check_guest_list",
@@ -358,23 +365,21 @@ def root() -> dict[str, Any]:
 def health() -> dict[str, Any]:
     guest_ok = bool(GUEST_LIST_JSON) or GUEST_LIST_PATH.exists()
     unlock_ready = _myq_configured() or SIMULATE_MYQ_OPEN
-    twilio_ok = bool(
-        TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER
-    )
     return {
         "status": "ok",
         "version": VERSION,
         "autonomous": AUTONOMOUS,
         "community_default": DEFAULT_COMMUNITY,
         "guest_list_ready": guest_ok,
-        "vendors_seeded": bool(creds.load_vendors().get("vendors")),
-        "twilio_configured": twilio_ok,
+        "vendors_seeded": bool(creds.list_vendors(include_inactive=True)),
+        "twilio_configured": creds.twilio_configured(),
         "myq_api_configured": _myq_configured(),
         "simulate_myq_open": SIMULATE_MYQ_OPEN,
         "unlock_ready": unlock_ready,
         "human_sms_fallback": HUMAN_SMS_FALLBACK,
         "verify_signatures": VERIFY_SIGNATURES,
         "serverless": SERVERLESS,
+        "retell_did_configured": bool(RETELL_DID),
         "active_credentials": len(creds.list_active_credentials()),
     }
 
@@ -387,18 +392,101 @@ def access_ui() -> FileResponse:
     return FileResponse(path)
 
 
+@app.get("/gate", response_class=HTMLResponse)
+def gate_ui() -> FileResponse:
+    path = STATIC_DIR / "gate.html"
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="gate.html missing")
+    return FileResponse(path)
+
+
 @app.get("/access/meta")
 def access_meta() -> dict[str, Any]:
     book = creds.load_vendors()
-    twilio_ok = bool(
-        TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER
-    )
     return {
         "community_name": book.get("community_name") or DEFAULT_COMMUNITY,
-        "vendors": book.get("vendors", []),
+        "timezone": book.get("timezone") or "America/New_York",
+        "vendors": creds.list_vendors(include_inactive=True),
         "deliveries": creds.list_deliveries(20),
         "active_credentials": creds.list_active_credentials(),
-        "twilio_configured": twilio_ok,
+        "twilio_configured": creds.twilio_configured(),
+        "retell_did": RETELL_DID,
+        "simulate_myq_open": SIMULATE_MYQ_OPEN,
+        "role": "cam_admin",
+    }
+
+
+@app.get("/access/vendors")
+def access_list_vendors() -> dict[str, Any]:
+    return {
+        "community_name": creds.load_vendors().get("community_name") or DEFAULT_COMMUNITY,
+        "vendors": creds.list_vendors(include_inactive=True),
+    }
+
+
+@app.post("/access/vendors")
+async def access_upsert_vendor(request: Request) -> JSONResponse:
+    body = await request.json()
+    try:
+        vendor = creds.upsert_vendor(body)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    _append_event({"tool": "access_upsert_vendor", "vendor": vendor})
+    return JSONResponse({"ok": True, "vendor": vendor})
+
+
+@app.patch("/access/vendors/{company_name}")
+async def access_patch_vendor(company_name: str, request: Request) -> JSONResponse:
+    body = await request.json()
+    try:
+        if "active" in body and set(body.keys()) == {"active"}:
+            vendor = creds.set_vendor_active(company_name, bool(body["active"]))
+        else:
+            existing = creds.find_vendor(company_name, include_inactive=True)
+            if not existing:
+                raise ValueError(f"Vendor not found: {company_name}")
+            merged = {**existing, **body, "company_name": body.get("company_name") or existing["company_name"]}
+            vendor = creds.upsert_vendor(merged)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    _append_event({"tool": "access_patch_vendor", "vendor": vendor})
+    return JSONResponse({"ok": True, "vendor": vendor})
+
+
+@app.get("/access/audit")
+def access_audit() -> dict[str, Any]:
+    events: list[dict[str, Any]] = []
+    if not SERVERLESS and EVENTS_PATH.exists():
+        try:
+            lines = EVENTS_PATH.read_text(encoding="utf-8").strip().splitlines()
+            for line in lines[-40:]:
+                try:
+                    events.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+            events.reverse()
+        except OSError:
+            events = []
+    return {
+        "deliveries": creds.list_deliveries(30),
+        "credentials": creds.list_recent_credentials(30),
+        "active_credentials": creds.list_active_credentials(),
+        "events": events,
+    }
+
+
+@app.get("/gate/meta")
+def gate_meta() -> dict[str, Any]:
+    book = creds.load_vendors()
+    return {
+        "community_name": book.get("community_name") or DEFAULT_COMMUNITY,
+        "retell_did": RETELL_DID,
+        "retell_tel_href": f"tel:{RETELL_DID}" if RETELL_DID else "",
+        "simulate_myq_open": SIMULATE_MYQ_OPEN,
+        "note": (
+            "Pedestal Call Attendant should dial the Retell DID. "
+            "This /gate surface mirrors the visitor UX for product walkthroughs."
+        ),
     }
 
 
@@ -406,19 +494,19 @@ def access_meta() -> dict[str, Any]:
 async def access_send_code(request: Request) -> JSONResponse:
     body = await request.json()
     company = (body.get("company_name") or "").strip()
-    phone = (body.get("phone") or "").strip()
+    phone = (body.get("phone") or "").strip() or None
     community = (body.get("community_name") or DEFAULT_COMMUNITY).strip()
-    actor = (body.get("actor") or "access_ui").strip()
+    actor = (body.get("actor") or "cam_desk").strip()
+    override_window = bool(body.get("override_window"))
     if not company:
         raise HTTPException(status_code=400, detail="company_name required")
-    if not phone:
-        raise HTTPException(status_code=400, detail="phone required")
     try:
         result = creds.send_code(
             community=community,
             company_name=company,
             phone=phone,
             actor=actor,
+            override_window=override_window,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -434,7 +522,7 @@ async def access_revoke(request: Request) -> JSONResponse:
     if not company:
         raise HTTPException(status_code=400, detail="company_name required")
     n = creds.revoke_credential(
-        community=community, company_name=company, actor="access_ui"
+        community=community, company_name=company, actor="cam_desk"
     )
     _append_event(
         {

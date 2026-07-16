@@ -6,20 +6,20 @@ Sales script: [docs/SALES-DEMO.md](../docs/SALES-DEMO.md)
 
 ## Env vars (all hosts)
 
-Copy [`.env.example`](.env.example). Minimum for a presentable demo:
+Copy [`.env.example`](.env.example). Minimum for the real product:
 
 | Var | Value |
 |-----|-------|
-| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_FROM_NUMBER` | Real SMS in the room |
-| `RETELL_API_KEY` | Retell key (signature verify) |
+| `TWILIO_*` | SMS to owner/dispatch phones |
+| `RETELL_API_KEY` | Agent push + signature verify |
+| `RETELL_DID` | Shown on `/gate`; tablet Call Attendant target |
 | `DEFAULT_COMMUNITY` | `The Inlets` |
 | `AUTONOMOUS` | `true` |
 | `HUMAN_SMS_FALLBACK` | `false` |
 | `VERIFY_RETELL_SIGNATURES` | `true` in prod |
-| `MYQ_*` | Required for live autonomous opens |
-| `SIMULATE_MYQ_OPEN` | `true` for demos only |
+| `MYQ_*` | Live autonomous opens |
+| `SIMULATE_MYQ_OPEN` | `true` until Partner API |
 | `SERVERLESS` | `true` if filesystem is ephemeral |
-| `GUEST_LIST_JSON` | Full guest-list JSON string when you cannot mount a file |
 
 ## Option A — Railway (fastest)
 
@@ -57,17 +57,16 @@ Put a reverse proxy / load balancer with HTTPS in front.
 
 ## After deploy
 
-1. Open `https://YOUR_HOST/health` — expect `"autonomous":true`, `"twilio_configured":true` for live SMS.
-2. Open `https://YOUR_HOST/access` — send a test code to your phone.
-3. Update Retell custom function URLs to `https://YOUR_HOST/tools/...`.
-4. Re-run cell tests from [setup-checklist.md](../setup-checklist.md) + proof PIN path.
-5. Cold-run [SALES-DEMO.md](../docs/SALES-DEMO.md) twice; save a backup screen recording.
+1. `https://YOUR_HOST/health` — `autonomous`, Twilio flags as expected.
+2. `https://YOUR_HOST/access` — add vendor, send code.
+3. `https://YOUR_HOST/gate` — Call Attendant UX; set `RETELL_DID`.
+4. `python scripts/create_agent.py --webhook-base https://YOUR_HOST`
+5. Run [PRODUCT-ACCEPTANCE.md](../docs/PRODUCT-ACCEPTANCE.md); wire tablet per [MYQ-TABLET-RETELL.md](../docs/MYQ-TABLET-RETELL.md).
 
-## Local still works
+## Local
 
 ```bash
 cd webhook
 ./run.sh
-# open http://127.0.0.1:8080/access
-# other terminal: ngrok http 8080
+# http://127.0.0.1:8080/access  and  /gate
 ```

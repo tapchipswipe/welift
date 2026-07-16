@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for credential engine + access + vendor proof PIN."""
+"""Tests for credential engine, CAM roster, access desk, vendor proof PIN."""
 
 from __future__ import annotations
 
@@ -8,12 +8,11 @@ import sys
 import tempfile
 from pathlib import Path
 
-# Isolate store before importing modules
 TMP = Path(tempfile.mkdtemp())
+SEED = Path(__file__).resolve().parents[1] / "data" / "vendors.seed.json"
 os.environ["CREDENTIALS_PATH"] = str(TMP / "credentials.json")
-os.environ["VENDORS_PATH"] = str(
-    Path(__file__).resolve().parents[1] / "data" / "vendors.seed.json"
-)
+os.environ["VENDORS_PATH"] = str(TMP / "vendors.json")
+os.environ["VENDORS_SEED_PATH"] = str(SEED)
 os.environ["SMS_LOG_ONLY"] = "true"
 os.environ["VERIFY_RETELL_SIGNATURES"] = "false"
 os.environ["SIMULATE_MYQ_OPEN"] = "true"
@@ -64,12 +63,56 @@ def test_mint_verify_revoke() -> None:
     print("mint/verify/revoke OK")
 
 
+def test_vendor_crud() -> None:
+    v = creds.upsert_vendor(
+        {
+            "company_name": "Solo HVAC Pros",
+            "access_contact_type": "owner",
+            "access_phone": "+19415558888",
+            "window": "Mon-Fri 07:00-18:00",
+            "notes": "SMB test",
+        }
+    )
+    assert v["access_contact_type"] == "owner"
+    listed = creds.list_vendors()
+    assert any(x["company_name"] == "Solo HVAC Pros" for x in listed)
+
+    r = client.post(
+        "/access/vendors",
+        json={
+            "company_name": "Big Lawn Co",
+            "access_contact_type": "dispatch",
+            "access_phone": "9415557777",
+            "window": "as-needed",
+        },
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["vendor"]["access_contact_type"] == "dispatch"
+
+    r = client.patch(
+        "/access/vendors/Big Lawn Co",
+        json={"active": False},
+    )
+    assert r.status_code == 200
+    assert r.json()["vendor"]["active"] is False
+    print("vendor CRUD OK")
+
+
 def test_send_code_api() -> None:
+    # use as-needed vendor to avoid window flake
+    client.post(
+        "/access/vendors",
+        json={
+            "company_name": "Anytime Plumbing",
+            "access_contact_type": "owner",
+            "access_phone": "+19415559999",
+            "window": "as-needed",
+        },
+    )
     r = client.post(
         "/access/send_code",
         json={
-            "company_name": "GreenSide Lawn",
-            "phone": "9415559999",
+            "company_name": "Anytime Plumbing",
             "community_name": "The Inlets",
         },
     )
@@ -81,14 +124,52 @@ def test_send_code_api() -> None:
     print("send_code API OK", body["last4"])
 
 
+def test_window_enforcement() -> None:
+    creds.upsert_vendor(
+        {
+            "company_name": "Night Only Co",
+            "access_contact_type": "dispatch",
+            "access_phone": "+19415551111",
+            "window": "Mon-Fri 02:00-03:00",
+        }
+    )
+    # Almost certainly outside 2–3am local → should fail without override
+    try:
+        creds.send_code(
+            community="The Inlets",
+            company_name="Night Only Co",
+            override_window=False,
+        )
+        # If somehow inside window, still OK — skip assert
+        print("window check skipped (inside narrow window)")
+    except ValueError as exc:
+        assert "Outside authorized window" in str(exc)
+
+    ok = creds.send_code(
+        community="The Inlets",
+        company_name="Night Only Co",
+        override_window=True,
+    )
+    assert ok["ok"] is True
+    print("window enforcement OK")
+
+
 def test_vendor_proof_retell() -> None:
+    client.post(
+        "/access/vendors",
+        json={
+            "company_name": "AquaClear Pools",
+            "access_contact_type": "owner",
+            "access_phone": "+19415551212",
+            "window": "as-needed",
+        },
+    )
     sent = client.post(
         "/access/send_code",
-        json={"company_name": "AquaClear Pools", "phone": "+19415551212"},
+        json={"company_name": "AquaClear Pools"},
     ).json()
     code = sent["code"]
 
-    # missing proof
     r = client.post(
         "/tools/check_guest_list",
         json={
@@ -103,7 +184,6 @@ def test_vendor_proof_retell() -> None:
     assert r.json()["decision"] == "deny"
     assert r.json().get("needs_proof_code") is True
 
-    # wrong proof
     r = client.post(
         "/tools/check_guest_list",
         json={
@@ -118,7 +198,6 @@ def test_vendor_proof_retell() -> None:
     )
     assert r.json()["decision"] == "deny"
 
-    # good proof
     r = client.post(
         "/tools/check_guest_list",
         json={
@@ -149,25 +228,35 @@ def test_vendor_proof_retell() -> None:
     print("open_gate simulate OK")
 
 
-def test_access_page() -> None:
+def test_access_and_gate_pages() -> None:
     r = client.get("/access")
     assert r.status_code == 200
-    assert "We Lift" in r.text
+    assert "CAM Access Desk" in r.text
+    assert "Admin / CAM only" in r.text
     meta = client.get("/access/meta")
     assert meta.status_code == 200
-    assert len(meta.json()["vendors"]) >= 1
-    print("access UI OK")
+    assert meta.json()["role"] == "cam_admin"
+    audit = client.get("/access/audit")
+    assert audit.status_code == 200
+    g = client.get("/gate")
+    assert g.status_code == 200
+    assert "Call Attendant" in g.text
+    gm = client.get("/gate/meta")
+    assert gm.status_code == 200
+    print("access + gate UI OK")
 
 
 def main_test() -> int:
     h = client.get("/health")
     assert h.status_code == 200
-    assert h.json()["version"] == "0.5.0"
+    assert h.json()["version"] == "0.6.0"
     print("health OK", h.json()["version"])
     test_mint_verify_revoke()
+    test_vendor_crud()
     test_send_code_api()
+    test_window_enforcement()
     test_vendor_proof_retell()
-    test_access_page()
+    test_access_and_gate_pages()
     print("ALL CREDENTIAL/ACCESS TESTS PASS")
     return 0
 

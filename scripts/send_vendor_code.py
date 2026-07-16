@@ -20,8 +20,9 @@ load_dotenv(ROOT / "webhook" / ".env")
 def main() -> int:
     parser = argparse.ArgumentParser(description="Send We Lift vendor gate code")
     parser.add_argument("--company", required=True)
-    parser.add_argument("--phone", required=True, help="E.164 or 10-digit US")
+    parser.add_argument("--phone", default="", help="Override E.164; blank = roster phone")
     parser.add_argument("--community", default=os.getenv("DEFAULT_COMMUNITY", "The Inlets"))
+    parser.add_argument("--override-window", action="store_true")
     args = parser.parse_args()
 
     import credentials as creds
@@ -30,8 +31,9 @@ def main() -> int:
         result = creds.send_code(
             community=args.community,
             company_name=args.company,
-            phone=args.phone,
+            phone=args.phone or None,
             actor="cli",
+            override_window=args.override_window,
         )
     except ValueError as exc:
         print(exc, file=sys.stderr)
