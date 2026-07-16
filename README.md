@@ -22,9 +22,11 @@ Full thesis: **[docs/PRODUCT.md](docs/PRODUCT.md)** · Security: **[docs/GATE-SE
 |------|---------|
 | [webhook/](webhook/) | Verify → myQ unlock (autonomous) |
 | [configs/](configs/) | Retell LLM + agent JSON |
+| [configs/retell-agent-import.json](configs/retell-agent-import.json) | Dashboard Import file (rebuild via script) |
 | [prompt.md](prompt.md) | Vendor-first autonomous prompt |
 | [data/guest-list.example.json](data/guest-list.example.json) | Vendor-first authorized list sample |
-| [scripts/create_agent.py](scripts/create_agent.py) | Push configs to Retell API |
+| [scripts/build_retell_import.py](scripts/build_retell_import.py) | Build Import JSON with webhook base |
+| [scripts/create_agent.py](scripts/create_agent.py) | Push configs to Retell API (fallback) |
 | [setup-checklist.md](setup-checklist.md) | Retell + myQ wiring |
 | [webhook/DEPLOY.md](webhook/DEPLOY.md) | Stable HTTPS deploy |
 
@@ -32,7 +34,7 @@ Full thesis: **[docs/PRODUCT.md](docs/PRODUCT.md)** · Security: **[docs/GATE-SE
 
 1. `cp webhook/.env.example webhook/.env` — `AUTONOMOUS=true`. Demos: `SIMULATE_MYQ_OPEN=true`. Live: set `MYQ_*`.
 2. `cd webhook && ./run.sh` (or deploy).
-3. Create Retell agent from [setup-checklist.md](setup-checklist.md) / [prompt.md](prompt.md).
+3. Create Retell agent via Import JSON — [setup-checklist.md](setup-checklist.md) Option C (or [prompt.md](prompt.md)).
 4. Point myQ Call Attendant at the Retell DID only after approve/deny/open tests pass.
 
 **Critical path:** [myQ Partner API](docs/pilot-the-inlets/myq-api-path.md).  

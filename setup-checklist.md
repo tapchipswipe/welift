@@ -3,7 +3,27 @@
 Use this after the webhook is reachable on HTTPS (ngrok or deploy).
 
 Dashboard: https://dashboard.retellai.com  
-Configs in this folder: [`configs/retell-llm.json`](configs/retell-llm.json), [`configs/retell-agent.json`](configs/retell-agent.json), full prompt in [`prompt.md`](prompt.md).
+Configs: [`configs/retell-agent-import.json`](configs/retell-agent-import.json) (preferred Import), [`configs/retell-llm.json`](configs/retell-llm.json), [`configs/retell-agent.json`](configs/retell-agent.json), full prompt in [`prompt.md`](prompt.md).
+
+---
+
+## Webhook base URL (pick by stage)
+
+Retell custom tools need a **public HTTPS** base (no trailing slash). That host is only the service in [`webhook/`](webhook/).
+
+| Stage | Use | Why |
+|-------|-----|-----|
+| First Retell import / cell tests | **ngrok** — `ngrok http 8080` while `webhook/./run.sh` runs | Fastest. URL changes when ngrok restarts. |
+| CAM demo / tablet pointing | **Railway** (or Fly) — see [`webhook/DEPLOY.md`](webhook/DEPLOY.md) | Stable URL so you do not re-edit Retell tools daily. |
+| Agent file before host exists | Placeholder `https://REPLACE_WITH_WEBHOOK_HOST` in the Import JSON | Agent still imports; paste the real host after `/health` works. |
+
+Do **not** invent a fake URL. After Import, either edit the three tool URLs (+ optional agent webhook) in the Retell UI, or rebuild:
+
+```bash
+python scripts/build_retell_import.py --webhook-base https://YOUR_HOST
+```
+
+Verify before live calls: `GET {WEBHOOK_BASE}/health` returns JSON with autonomous flags.
 
 ---
 
@@ -13,15 +33,16 @@ Configs in this folder: [`configs/retell-llm.json`](configs/retell-llm.json), [`
 |------|--------|
 | Retell account + API key | |
 | Webhook running (`uvicorn` in `webhook/`) | |
-| Public HTTPS URL (ngrok) | |
+| Public HTTPS URL (ngrok for first wiring; Railway before CAM) | |
 | `data/guest-list.json` copied from example + tonight’s names | |
-| `ONCALL_PHONE` in `webhook/.env` (your cell, E.164) | |
 | Optional Twilio for real SMS | |
 
 ```bash
 cd webhook
 cp ../data/guest-list.example.json ../data/guest-list.json
-cp .env.example .env   # fill RETELL_API_KEY + ONCALL_PHONE; DEFAULT_COMMUNITY=The Inlets
+cp .env.example .env   # fill RETELL_API_KEY; DEFAULT_COMMUNITY=The Inlets
+# demos without myQ API:
+#   SIMULATE_MYQ_OPEN=true
 ./run.sh
 # other terminal:
 ngrok http 8080
@@ -30,9 +51,29 @@ ngrok http 8080
 
 ---
 
-## 1. Create the LLM (Response Engine)
+## 1. Create the agent
 
-**Option A — script**
+### Option C — Import JSON (preferred)
+
+1. Confirm `GET https://YOUR_HOST/health` works (skip if you will paste URLs later).
+2. Build (or rebuild) the Import file:
+
+```bash
+# from repo root — placeholder (edit URLs in Retell after Import):
+python3 scripts/build_retell_import.py
+
+# or with a real host:
+python3 scripts/build_retell_import.py --webhook-base https://xxxx.ngrok-free.app
+```
+
+3. Dashboard → **Agents → Import** → upload [`configs/retell-agent-import.json`](configs/retell-agent-import.json).
+4. If you used the placeholder host, update all three custom tool URLs (+ optional agent webhook) to your real `WEBHOOK_BASE`.
+5. Confirm dynamic variable `community_name` = `The Inlets`.
+6. Continue at §4 (phone number).
+
+If Import rejects the file shape, use **Option A** (API script) below.
+
+### Option A — script (API fallback)
 
 ```bash
 # from repo root
@@ -40,7 +81,7 @@ source webhook/.venv/bin/activate
 python scripts/create_agent.py --webhook-base https://YOUR_HOST --community "The Inlets"
 ```
 
-**Option B — dashboard**
+### Option B — dashboard (manual)
 
 1. **Agents → Create** (or Response Engine → Retell LLM)
 2. Paste **begin_message** and **general_prompt** from [`prompt.md`](prompt.md)
@@ -52,7 +93,7 @@ python scripts/create_agent.py --webhook-base https://YOUR_HOST --community "The
 
 ## 2. Custom functions (critical)
 
-Replace `YOUR_WEBHOOK_HOST` with your ngrok/deploy host.
+Replace `REPLACE_WITH_WEBHOOK_HOST` / `YOUR_WEBHOOK_HOST` with your ngrok/deploy host.
 
 | Name | Method | URL | Speak during | Speak after |
 |------|--------|-----|--------------|-------------|
@@ -61,7 +102,7 @@ Replace `YOUR_WEBHOOK_HOST` with your ngrok/deploy host.
 | `escalate_to_oncall` | POST | `https://…/tools/escalate_to_oncall` | on | on |
 | `end_call` | built-in | — | — | — |
 
-Parameter schemas: copy from [`configs/retell-llm.json`](configs/retell-llm.json) → each tool’s `parameters` object.
+Parameter schemas: copy from [`configs/retell-llm.json`](configs/retell-llm.json) → each tool’s `parameters` object (already in the Import file for Option C).
 
 **Payload:** leave **args only** OFF (default wrapped `{ name, call, args }` — webhook supports both).
 
@@ -69,7 +110,7 @@ Parameter schemas: copy from [`configs/retell-llm.json`](configs/retell-llm.json
 
 ## 3. Voice agent settings
 
-From [`configs/retell-agent.json`](configs/retell-agent.json):
+From [`configs/retell-agent.json`](configs/retell-agent.json) (already in the Import file):
 
 - Voice: calm adult English (e.g. `11labs-Adrian` or similar; swap if pedestal audio needs slower)
 - Language: `en-US`
@@ -101,6 +142,8 @@ Call the Retell number. Walk three paths (`SIMULATE_MYQ_OPEN=true` until myQ API
 
 Confirm events log grows with each tool call.
 
+Before CAM outreach: deploy a stable host ([`webhook/DEPLOY.md`](webhook/DEPLOY.md)), then rebuild Import or update tool URLs to the Railway/Fly base.
+
 ---
 
 ## 6. Wire myQ tablet (only after §5 passes)
@@ -127,13 +170,14 @@ When a visitor is approved overnight:
 
 | Mistake | Fix |
 |---------|-----|
-| Tool URL still `YOUR_WEBHOOK_HOST` | Update all three custom function URLs |
+| Tool URL still `REPLACE_WITH_WEBHOOK_HOST` / `YOUR_WEBHOOK_HOST` | Update all three custom function URLs (or rebuild Import with `--webhook-base`) |
 | No `guest-list.json` | Copy example; agent will deny |
 | Signature 401s | Use webhook API key; or `VERIFY_RETELL_SIGNATURES=false` for local curl only |
 | Agent opens without check | Prompt: open_gate only after approve — temperature ~0.2 |
 | Forward myQ before Retell test | Never — finish §5 first |
 | Expect human SMS | Product is autonomous — configure `MYQ_*` instead |
 | Live traffic with only simulate | Turn `SIMULATE_MYQ_OPEN=false` after API works |
+| ngrok URL rotated | Rebuild Import or edit tool URLs; prefer Railway before CAM |
 
 ---
 
