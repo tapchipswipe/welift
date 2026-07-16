@@ -116,8 +116,8 @@ Bar for success: pedestal audio, routing, unlock, logging on live hardware.
 
 | Item | Status |
 |------|--------|
-| **Pricing model** | **Pay by usage** — Lucas's idea; flat monthly not chosen yet |
-| **Price** | **TBD** — see usage bands in [pre-cam-playbook.md](pre-cam-playbook.md) §C |
+| **Pricing model** | **Vendor Call Attendant** — modest monthly platform + included opens + per-extra open ([PRODUCT.md](../PRODUCT.md)) |
+| **Price** | **TBD in band** — ~$399–$899/mo platform direction; not $2.5k–$4k guard-replacement default |
 | **Contract** | **Unknown** — no agreement path yet |
 
 ---
