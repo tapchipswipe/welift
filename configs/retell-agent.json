@@ -1,0 +1,58 @@
+{
+  "agent_name": "Overnight Gate Attendant — Pilot HOA",
+  "voice_id": "11labs-Adrian",
+  "voice_temperature": 0.7,
+  "voice_speed": 0.95,
+  "responsiveness": 0.9,
+  "interruption_sensitivity": 0.7,
+  "enable_backchannel": false,
+  "language": "en-US",
+  "webhook_url": "https://YOUR_WEBHOOK_HOST/retell/webhook",
+  "boosted_keywords": [
+    "gate",
+    "guest pass",
+    "myQ",
+    "attendant",
+    "delivery",
+    "vendor",
+    "unit"
+  ],
+  "end_call_after_silence_ms": 45000,
+  "max_call_duration_ms": 600000,
+  "begin_message_delay_ms": 800,
+  "response_engine": {
+    "type": "retell-llm",
+    "llm_id": "REPLACE_AFTER_CREATE_RETELL_LLM"
+  },
+  "post_call_analysis_data": [
+    {
+      "type": "string",
+      "name": "community_name",
+      "description": "Community / HOA name for the call",
+      "examples": ["Pilot HOA"]
+    },
+    {
+      "type": "string",
+      "name": "visitor_name",
+      "description": "Visitor full name collected on the call",
+      "examples": ["Jordan Lee"]
+    },
+    {
+      "type": "string",
+      "name": "host_name_or_address",
+      "description": "Resident name or unit/address",
+      "examples": ["Sam Rivera unit 12"]
+    },
+    {
+      "type": "enum",
+      "name": "result",
+      "description": "Final access decision",
+      "choices": ["opened", "pending_human_open", "denied", "escalated", "abandoned", "spam"]
+    },
+    {
+      "type": "boolean",
+      "name": "open_requested",
+      "description": "Whether open_gate was invoked"
+    }
+  ]
+}

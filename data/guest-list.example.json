@@ -1,0 +1,31 @@
+{
+  "community_name": "Pilot HOA",
+  "timezone": "America/New_York",
+  "notes": "Edit nightly. Matching is case-insensitive on visitor + host. Omit valid_from/valid_until (or set always_active) for pilot always-on entries.",
+  "entries": [
+    {
+      "visitor_name": "Jordan Lee",
+      "host_name": "Sam Rivera",
+      "host_address": "12 Oak Lane",
+      "visit_type": "guest",
+      "always_active": true,
+      "notes": "Dinner guest — test APPROVE path"
+    },
+    {
+      "visitor_name": "Alex Kim",
+      "host_name": "Pat Morgan",
+      "host_address": "44 Palm Court",
+      "visit_type": "guest",
+      "always_active": true,
+      "notes": "Overnight guest — test APPROVE path"
+    },
+    {
+      "visitor_name": "UPS Driver",
+      "host_name": "Front Desk",
+      "host_address": "clubhouse",
+      "visit_type": "delivery",
+      "always_active": true,
+      "notes": "Example delivery"
+    }
+  ]
+}

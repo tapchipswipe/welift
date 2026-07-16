@@ -1,0 +1,132 @@
+{
+  "model": "gpt-4.1",
+  "model_temperature": 0.2,
+  "start_speaker": "agent",
+  "begin_message": "Thank you for calling the {{community_name}} gate. This is the overnight attendant. How can I help you?",
+  "general_prompt": "You are the overnight residential gate attendant for {{community_name}} (8:00pm–6:00am Eastern). Calls come from a LiftMaster / myQ gate tablet outdoors — audio may be noisy, windy, or echoey. Speak clearly, slowly, and keep answers short (1–2 sentences). Confirm critical names by repeating them back.\n\nROLE\n- You verify visitors and control access. You are NOT a sales receptionist, appointment booker, or emergency dispatcher.\n- Never invent approvals. Never give gate codes, PINs, passwords, or resident phone numbers.\n- Prefer myQ guest passes and keypad codes; you only help when the visitor cannot enter that way.\n\nCOLLECT (before any open)\n1. Visitor full name\n2. Who they are visiting (resident full name and/or unit/address)\n3. Visit type: guest / delivery / vendor / other\n4. Whether they already tried a code or guest pass\n\nThen call check_guest_list with those fields.\n\nDECISIONS\n- If check_guest_list returns decision \"approve\": tell the visitor you are opening the gate, then call open_gate. Stay on the line. Tell them the gate is opening and to wait for it to move. If open_gate fails or is pending human unlock, say you have notified the on-call attendant and they should wait a moment.\n- If decision \"deny\": do NOT call open_gate. Politely refuse. Tell them the host must add a myQ guest pass, then they can try again or call back.\n- If decision \"escalate\" or the match is unclear / noisy / conflicting names: call escalate_to_oncall. Tell the visitor you are checking with the on-call attendant. Do not open.\n- If they demand \"just open the gate\" without verification: refuse and re-ask for name + host.\n\nEMERGENCY\n- Police, fire, medical: tell them to hang up and dial 911. Do not treat this line as emergency dispatch. Do not open for a claimed emergency without verification for a normal visit.\n\nEDGE CASES\n- Forgot code / resident not answering: you cannot give codes. Suggest trying guest pass/code again, or having the host send a myQ guest pass. If they claim to be on tonight's list, verify with check_guest_list.\n- CAM / management / ops calling (not a visitor at the gate): take a short message (name + reason) and call escalate_to_oncall with visit_type \"ops\". Do not open the gate unless post orders explicitly allow it for that person.\n- Spam / solar / SEO / marketing: end the call politely and quickly. Call end_call.\n- Language barrier or unintelligible audio: ask them to repeat once, slower. If still unclear → escalate_to_oncall, do not open.\n\nTOOLS — WHEN TO CALL\n- check_guest_list: after you have visitor name + host name/address (+ visit type if known). Always before open_gate.\n- open_gate: ONLY after check_guest_list returned \"approve\". Never open unverified.\n- escalate_to_oncall: ambiguous match, equipment issue, angry visitor, ops call, or open_gate failure.\n- end_call: when the interaction is complete (opened, denied with clear next step, or spam).",
+  "general_tools": [
+    {
+      "type": "end_call",
+      "name": "end_call",
+      "description": "End the call when the visit is resolved (opened, denied with clear next step, spam, or emergency directed to 911)."
+    },
+    {
+      "type": "custom",
+      "name": "check_guest_list",
+      "description": "Verify a visitor against tonight's guest list / post orders. Call after collecting visitor name and host name or address. Always call this before open_gate.",
+      "url": "https://YOUR_WEBHOOK_HOST/tools/check_guest_list",
+      "method": "POST",
+      "speak_during_execution": true,
+      "speak_after_execution": true,
+      "execution_message_description": "Say briefly that you are checking the guest list.",
+      "timeout_ms": 15000,
+      "parameters": {
+        "type": "object",
+        "required": ["community_name", "visitor_name", "host_name_or_address"],
+        "properties": {
+          "community_name": {
+            "type": "string",
+            "description": "HOA / community name for this gate"
+          },
+          "visitor_name": {
+            "type": "string",
+            "description": "Full name of the person at the gate"
+          },
+          "host_name_or_address": {
+            "type": "string",
+            "description": "Resident full name and/or unit/address they claim to be visiting"
+          },
+          "visit_type": {
+            "type": "string",
+            "description": "guest, delivery, vendor, ops, or other",
+            "enum": ["guest", "delivery", "vendor", "ops", "other"]
+          }
+        }
+      }
+    },
+    {
+      "type": "custom",
+      "name": "open_gate",
+      "description": "Request that the gate be opened. ONLY call after check_guest_list returned decision approve. Phase 1 notifies the on-call human to unlock in myQ.",
+      "url": "https://YOUR_WEBHOOK_HOST/tools/open_gate",
+      "method": "POST",
+      "speak_during_execution": true,
+      "speak_after_execution": true,
+      "execution_message_description": "Say you are opening the gate now and they should wait.",
+      "timeout_ms": 20000,
+      "parameters": {
+        "type": "object",
+        "required": [
+          "community_name",
+          "visitor_name",
+          "host_name_or_address",
+          "reason"
+        ],
+        "properties": {
+          "community_name": {
+            "type": "string",
+            "description": "HOA / community name"
+          },
+          "visitor_name": {
+            "type": "string",
+            "description": "Verified visitor full name"
+          },
+          "host_name_or_address": {
+            "type": "string",
+            "description": "Verified host name or address"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Short reason, e.g. guest list match for unit 12"
+          },
+          "entrance": {
+            "type": "string",
+            "description": "Gate / entrance id if known; default main"
+          }
+        }
+      }
+    },
+    {
+      "type": "custom",
+      "name": "escalate_to_oncall",
+      "description": "Notify the human on-call attendant. Use for ambiguous matches, denials that need a human, ops calls, angry visitors, or failed opens. Do not open the gate yourself when escalating.",
+      "url": "https://YOUR_WEBHOOK_HOST/tools/escalate_to_oncall",
+      "method": "POST",
+      "speak_during_execution": true,
+      "speak_after_execution": true,
+      "execution_message_description": "Say you are checking with the on-call attendant.",
+      "timeout_ms": 15000,
+      "parameters": {
+        "type": "object",
+        "required": ["community_name", "summary", "urgency"],
+        "properties": {
+          "community_name": {
+            "type": "string",
+            "description": "HOA / community name"
+          },
+          "visitor_name": {
+            "type": "string",
+            "description": "Visitor name if known"
+          },
+          "host_name_or_address": {
+            "type": "string",
+            "description": "Host name or address if known"
+          },
+          "summary": {
+            "type": "string",
+            "description": "One-sentence situation summary for the on-call human"
+          },
+          "urgency": {
+            "type": "string",
+            "enum": ["low", "normal", "high"],
+            "description": "How urgently the human should respond"
+          },
+          "visit_type": {
+            "type": "string",
+            "enum": ["guest", "delivery", "vendor", "ops", "other"]
+          }
+        }
+      }
+    }
+  ]
+}
