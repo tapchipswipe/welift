@@ -11,9 +11,13 @@
 
 | Doc | Purpose |
 |-----|---------|
+| **[THIS-WEEK.md](THIS-WEEK.md)** | **Single checklist — tech + CAM + legal this week** |
 | [decision-log.md](decision-log.md) | Locked product Q&A from Lucas |
 | **[pre-cam-playbook.md](pre-cam-playbook.md)** | **No CAM yet — timeline, outreach, pricing, tech order, legal, edge cases** |
-| [cam-kickoff-email.md](cam-kickoff-email.md) | Ready-to-send CAM outreach |
+| [cam-identification.md](cam-identification.md) | Which Inlets + Associa Gulf Coast lead |
+| [cam-outreach-touch1.md](cam-outreach-touch1.md) | Info-first call/email/SMS scripts |
+| [cam-kickoff-email.md](cam-kickoff-email.md) | Formal CAM kickoff (after you have a name) |
+| [entity-insurance-action-kit.md](entity-insurance-action-kit.md) | Sunbiz LLC, broker emails, FDACS script, soft LOE |
 | [dealer-myq-routing.md](dealer-myq-routing.md) | Zero → overnight Call Attendant → Retell DID |
 | [on-call-sms-sla.md](on-call-sms-sla.md) | Phase 1 on-call model, SLAs, env vars |
 | [myq-api-path.md](myq-api-path.md) | Partner API request, hybrid mode, autonomous checklist |

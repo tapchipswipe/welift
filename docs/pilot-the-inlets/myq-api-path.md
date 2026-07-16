@@ -85,10 +85,18 @@ Before telling The Inlets board **“autonomous verify + open”**:
 
 ## Implementation note (welift)
 
-When API credentials arrive, extend `webhook/main.py` `open_gate`:
+**Code ready (v0.3):** `webhook/main.py` `open_gate` already attempts myQ Partner API when these env vars are set, then falls back to SMS:
 
-1. Attempt myQ Partner API remote unlock for configured entrance ID
-2. On failure → fall back to existing SMS to `ONCALL_PHONE`
-3. Log outcome to `data/events.jsonl`
+| Env | Purpose |
+|-----|---------|
+| `MYQ_API_BASE` | Partner API host |
+| `MYQ_API_KEY` | Bearer token |
+| `MYQ_FACILITY_ID` | Facility id |
+| `MYQ_ENTRANCE_ID` | Default entrance |
+| `MYQ_UNLOCK_PATH` | Optional path template (defaults to `/v1/facilities/{facility_id}/entrances/{entrance_id}/unlock`) |
 
-Reference: [README.md](../../README.md) Phase 2 · [01-metro-validation/liftmaster-integration.md](../../01-metro-validation/liftmaster-integration.md) §2
+Adjust `MYQ_UNLOCK_PATH` to match whatever path myQ documents after partner acceptance — the stub uses a plausible REST shape, not a guaranteed official path.
+
+`GET /health` reports `"myq_api_configured": true` and `"phase": 2` when all required vars are present.
+
+Reference: [README.md](../../README.md) Phase 2 · [webhook/.env.example](../../webhook/.env.example) · [01-metro-validation/liftmaster-integration.md](../../01-metro-validation/liftmaster-integration.md) §2

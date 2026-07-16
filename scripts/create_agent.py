@@ -24,7 +24,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--community",
-        default=os.getenv("DEFAULT_COMMUNITY", "Pilot HOA"),
+        default=os.getenv("DEFAULT_COMMUNITY", "The Inlets"),
         help="Default community_name dynamic variable",
     )
     args = parser.parse_args()

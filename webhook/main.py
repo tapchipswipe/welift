@@ -1,4 +1,8 @@
-"""Phase-1 Retell custom-function webhooks for overnight gate attendant."""
+"""Phase-1 Retell custom-function webhooks for overnight gate attendant.
+
+Phase 1: open_gate → SMS on-call → human unlocks in myQ.
+Phase 2: when MYQ_* env vars are set, attempt Partner API unlock first; SMS fallback.
+"""
 
 from __future__ import annotations
 
@@ -6,6 +10,8 @@ import json
 import logging
 import os
 import re
+import urllib.error
+import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -34,7 +40,7 @@ SERVERLESS = os.getenv("SERVERLESS", "false").lower() in {"1", "true", "yes"}
 
 RETELL_API_KEY = os.getenv("RETELL_API_KEY", "")
 ONCALL_PHONE = os.getenv("ONCALL_PHONE", "")
-DEFAULT_COMMUNITY = os.getenv("DEFAULT_COMMUNITY", "Pilot HOA")
+DEFAULT_COMMUNITY = os.getenv("DEFAULT_COMMUNITY", "The Inlets")
 VERIFY_SIGNATURES = os.getenv("VERIFY_RETELL_SIGNATURES", "true").lower() == "true"
 IGNORE_VALIDITY_WINDOW = os.getenv("IGNORE_VALIDITY_WINDOW", "false").lower() in {
     "1",
@@ -46,9 +52,18 @@ TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
 TWILIO_FROM_NUMBER = os.getenv("TWILIO_FROM_NUMBER", "")
 
+# Phase 2 — myQ Partner API (optional; SMS remains fallback)
+MYQ_API_BASE = os.getenv("MYQ_API_BASE", "").rstrip("/")
+MYQ_API_KEY = os.getenv("MYQ_API_KEY", "")
+MYQ_FACILITY_ID = os.getenv("MYQ_FACILITY_ID", "")
+MYQ_ENTRANCE_ID = os.getenv("MYQ_ENTRANCE_ID", "")
+MYQ_UNLOCK_PATH = os.getenv(
+    "MYQ_UNLOCK_PATH", "/v1/facilities/{facility_id}/entrances/{entrance_id}/unlock"
+)
+
 app = FastAPI(
     title="Virtual Gate Guard — Retell tools",
-    version="0.2.0",
+    version="0.3.0",
     description="Mid-call tools: check_guest_list, open_gate, escalate_to_oncall",
 )
 app.add_middleware(
@@ -68,13 +83,23 @@ def _normalize(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", (text or "").lower()).strip()
 
 
+def _tokens(text: str) -> set[str]:
+    return {t for t in _normalize(text).split() if t and t not in {"the", "a", "an", "of"}}
+
+
 def _names_match(a: str, b: str) -> bool:
+    """Substring match, then token overlap (handles 'Jordan Lee' vs 'Lee, Jordan')."""
     na, nb = _normalize(a), _normalize(b)
     if not na or not nb:
         return False
-    if na == nb:
+    if na == nb or na in nb or nb in na:
         return True
-    return na in nb or nb in na
+    ta, tb = _tokens(a), _tokens(b)
+    if not ta or not tb:
+        return False
+    # Require all tokens from the shorter name to appear in the longer
+    shorter, longer = (ta, tb) if len(ta) <= len(tb) else (tb, ta)
+    return shorter.issubset(longer)
 
 
 def _parse_dt(value: str | None) -> datetime | None:
@@ -101,7 +126,6 @@ def _entry_active(entry: dict[str, Any], now: datetime, tz_name: str) -> bool:
         return False
     if end and now > end:
         return False
-    # Optional: if only one bound set, still respect it
     _ = tz_name
     return True
 
@@ -165,6 +189,69 @@ def _send_sms(body: str) -> dict[str, Any]:
     }
 
 
+def _myq_configured() -> bool:
+    return bool(MYQ_API_BASE and MYQ_API_KEY and MYQ_FACILITY_ID and MYQ_ENTRANCE_ID)
+
+
+def _try_myq_unlock(entrance: str) -> dict[str, Any] | None:
+    """Attempt Partner API unlock. Returns None if not configured."""
+    if not _myq_configured():
+        return None
+
+    entrance_id = (entrance or "").strip()
+    if not entrance_id or entrance_id.lower() in {"main", "default"}:
+        entrance_id = MYQ_ENTRANCE_ID
+
+    path = MYQ_UNLOCK_PATH.format(
+        facility_id=MYQ_FACILITY_ID,
+        entrance_id=entrance_id,
+    )
+    url = f"{MYQ_API_BASE}{path}"
+    payload = json.dumps({"reason": "welift_verified_open"}).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=payload,
+        method="POST",
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {MYQ_API_KEY}",
+            "Accept": "application/json",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            body = resp.read().decode("utf-8", errors="replace")
+            try:
+                parsed = json.loads(body) if body else {}
+            except json.JSONDecodeError:
+                parsed = {"raw": body}
+            return {
+                "channel": "myq_api",
+                "status": "opened",
+                "http_status": resp.status,
+                "entrance_id": entrance_id,
+                "response": parsed,
+            }
+    except urllib.error.HTTPError as exc:
+        err_body = exc.read().decode("utf-8", errors="replace")
+        log.warning("myQ unlock HTTP %s: %s", exc.code, err_body)
+        return {
+            "channel": "myq_api",
+            "status": "error",
+            "http_status": exc.code,
+            "entrance_id": entrance_id,
+            "error": err_body or str(exc),
+        }
+    except Exception as exc:  # noqa: BLE001
+        log.exception("myQ unlock failed")
+        return {
+            "channel": "myq_api",
+            "status": "error",
+            "entrance_id": entrance_id,
+            "error": str(exc),
+        }
+
+
 def _verify_retell(raw_body: str, signature: str | None) -> None:
     if not VERIFY_SIGNATURES:
         return
@@ -217,7 +304,7 @@ async def _read_verified_json(
 def root() -> dict[str, Any]:
     return {
         "service": "virtual-gate-guard-retell-webhooks",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "endpoints": [
             "GET /health",
             "POST /tools/check_guest_list",
@@ -233,14 +320,17 @@ def health() -> dict[str, Any]:
     guest_ok = bool(GUEST_LIST_JSON) or GUEST_LIST_PATH.exists()
     return {
         "status": "ok",
+        "version": "0.3.0",
         "community_default": DEFAULT_COMMUNITY,
         "guest_list_ready": guest_ok,
         "oncall_configured": bool(ONCALL_PHONE),
         "twilio_configured": bool(
             TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER
         ),
+        "myq_api_configured": _myq_configured(),
         "verify_signatures": VERIFY_SIGNATURES,
         "serverless": SERVERLESS,
+        "phase": 2 if _myq_configured() else 1,
     }
 
 
@@ -256,6 +346,18 @@ async def check_guest_list(
     visitor = (args.get("visitor_name") or "").strip()
     host = (args.get("host_name_or_address") or "").strip()
     visit_type = (args.get("visit_type") or "").strip().lower()
+
+    if visit_type == "ops":
+        result = {
+            "decision": "escalate",
+            "confidence": "high",
+            "message": (
+                "Ops / management call — escalate to on-call. Do not open the gate."
+            ),
+            "community_name": community,
+        }
+        _append_event({"tool": "check_guest_list", "args": args, "result": result})
+        return JSONResponse(result)
 
     if not visitor or not host:
         result = {
@@ -296,9 +398,23 @@ async def check_guest_list(
 
     if len(matches) == 1:
         m = matches[0]
-        if visit_type == "delivery" and m.get("visit_type") != "delivery":
-            decision, confidence = "escalate", "medium"
-            message = "Possible match but visit type differs — escalate to on-call."
+        entry_type = (m.get("visit_type") or "").lower()
+        if visit_type and entry_type and visit_type != entry_type:
+            if visit_type in {"delivery", "vendor"} or entry_type in {
+                "delivery",
+                "vendor",
+            }:
+                decision, confidence = "escalate", "medium"
+                message = (
+                    "Possible match but visit type differs — escalate to on-call."
+                )
+            else:
+                decision, confidence = "approve", "medium"
+                message = (
+                    f"Approved (visit type soft mismatch): {m.get('visitor_name')} "
+                    f"visiting {m.get('host_name')} ({m.get('host_address')}). "
+                    f"Notes: {m.get('notes') or 'none'}. Call open_gate next."
+                )
         else:
             decision, confidence = "approve", "high"
             message = (
@@ -357,10 +473,30 @@ async def open_gate(
     reason = (args.get("reason") or "").strip()
     entrance = (args.get("entrance") or "main").strip()
 
+    myq = _try_myq_unlock(entrance)
+    if myq and myq.get("status") == "opened":
+        result = {
+            "status": "opened",
+            "phase": 2,
+            "message": (
+                "Gate unlock commanded via myQ API. Tell visitor to wait for the "
+                "gate to move."
+            ),
+            "myq": myq,
+        }
+        _append_event({"tool": "open_gate", "args": args, "result": result})
+        return JSONResponse(result)
+
     sms_body = (
         f"[{community}] OPEN {visitor} visiting {host} @ {entrance}. "
         f"{reason or 'guest list approve'} — unlock myQ NOW."
     )
+    if myq and myq.get("status") == "error":
+        sms_body = (
+            f"[{community}] myQ API FAILED — OPEN {visitor} visiting {host} "
+            f"@ {entrance}. Unlock myQ NOW. err={myq.get('error', '')[:120]}"
+        )
+
     sms = _send_sms(sms_body)
 
     if sms.get("status") == "error":
@@ -372,6 +508,7 @@ async def open_gate(
                 f"Error: {sms.get('error')}"
             ),
             "sms": sms,
+            "myq": myq,
         }
     else:
         result = {
@@ -382,6 +519,7 @@ async def open_gate(
                 "gate to move. Do not claim it is already open until they see motion."
             ),
             "sms": sms,
+            "myq": myq,
         }
 
     _append_event({"tool": "open_gate", "args": args, "result": result})

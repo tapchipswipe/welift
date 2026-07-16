@@ -2,8 +2,8 @@
 
 Locked product and pilot decisions. Update only by explicit owner change.
 
-**Last updated:** July 15, 2026  
-**Pilot:** The Inlets · **Target:** August 2026 (shadow / pre-CAM — see [pre-cam-playbook.md](pre-cam-playbook.md))
+**Last updated:** July 16, 2026  
+**Pilot:** The Inlets · **Target:** August 2026 (shadow / pre-CAM — see [pre-cam-playbook.md](pre-cam-playbook.md) · [THIS-WEEK.md](THIS-WEEK.md))
 
 ---
 
@@ -82,14 +82,16 @@ Bar for success: pedestal audio, routing, unlock, logging on live hardware.
 
 ---
 
-## Site & relationships (Lucas — Jul 15, 2026)
+## Site & relationships (Lucas — Jul 15–16, 2026)
 
 | Item | Status |
 |------|--------|
-| **CAM relationship at The Inlets** | **None yet** — still at idea stage before formal CAM agreement |
-| **LiftMaster dealer of record** | **Unknown** |
+| **Likely community** | **The Inlets at Riverdale** (Bradenton 34208) — not Nokomis condo. Confirm on first call. |
+| **CAM relationship** | **None yet** — no formal agreement |
+| **CAM lead (unverified)** | **Associa Gulf Coast** — Sarasota (941) 552-1598; MLS-cited manager. See [cam-identification.md](cam-identification.md) |
+| **LiftMaster dealer of record** | **Unknown** — ask CAM |
 | **myQ admin** | **Unknown** |
-| **Facility details** (CAP model, Phone.com, current after-hours routing) | **Unknown** |
+| **Facility details** (CAP model, Phone.com, current after-hours routing) | **Unknown** — daytime gate photo recommended |
 
 ---
 
@@ -113,23 +115,25 @@ Bar for success: pedestal audio, routing, unlock, logging on live hardware.
 
 ---
 
-## Technical (Lucas — Jul 15, 2026)
+## Technical (Lucas — Jul 15–16, 2026)
 
 | Item | Status |
 |------|--------|
-| **Retell** | **In progress** |
-| **Webhook** | **In progress** |
-| **Twilio** | **Not started** |
+| **Retell** | **In progress** — configs + prompt ready; needs live DID + §5 tests |
+| **Webhook** | **Code ready (v0.3)** — Phase 1 SMS + Phase 2 myQ stub; needs deploy + secrets |
+| **Twilio** | **Not started** — blocker for live SMS SLA |
+| **Deploy** | Configs in `webhook/DEPLOY.md` (Railway / Fly / Docker) |
 | **Exceptions guest list maintainer** | **CAM or Lucas** — either can update nightly list |
 
 ---
 
 ## Open items (not locked)
 
-- Identify CAM + dealer for The Inlets (see [pre-cam-playbook.md](pre-cam-playbook.md) §B)
+- Confirm Associa CAM name/email for The Inlets at Riverdale ([cam-identification.md](cam-identification.md))
+- Identify dealer for The Inlets
 - myQ Partner API acceptance timeline
 - Class B license vs subcontract partner
-- Usage pricing final numbers (bands TBD)
-- FL entity formation timing
-- August scope: shadow vs live pedestal ([pre-cam-playbook.md](pre-cam-playbook.md) §G)
-- Pivot deadline if The Inlets CAM cold (default Aug 1)
+- Usage pricing final numbers (bands in [pre-cam-playbook.md](pre-cam-playbook.md) §C)
+- FL entity formation timing ([entity-insurance-action-kit.md](entity-insurance-action-kit.md))
+- August scope: shadow vs live pedestal (default: **shadow** — pre-cam-playbook §G)
+- Pivot deadline if The Inlets CAM cold (default **Aug 1**)

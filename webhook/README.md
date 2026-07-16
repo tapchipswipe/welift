@@ -15,10 +15,12 @@ Public HTTPS endpoints Retell calls **mid-call**.
 ## Start locally
 
 ```bash
-cd 05-retell-agent/webhook
-cp .env.example .env   # set ONCALL_PHONE=+1… and RETELL_API_KEY
+cd webhook
+cp .env.example .env   # set ONCALL_PHONE=+1… and RETELL_API_KEY; DEFAULT_COMMUNITY=The Inlets
 ./run.sh
 ```
+
+Production deploy: see [DEPLOY.md](DEPLOY.md) (Railway / Fly / Docker).
 
 Second terminal:
 
@@ -75,7 +77,7 @@ curl -s http://127.0.0.1:8080/health | jq
 
 curl -s -X POST http://127.0.0.1:8080/tools/check_guest_list \
   -H 'Content-Type: application/json' \
-  -d '{"args":{"community_name":"Pilot HOA","visitor_name":"Jordan Lee","host_name_or_address":"Sam Rivera","visit_type":"guest"}}' | jq
+  -d '{"args":{"community_name":"The Inlets","visitor_name":"Jordan Lee","host_name_or_address":"Sam Rivera","visit_type":"guest"}}' | jq
 ```
 
 (Use `VERIFY_RETELL_SIGNATURES=false` in `.env` for unsigned local curls.)

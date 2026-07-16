@@ -1,5 +1,5 @@
 {
-  "agent_name": "Overnight Gate Attendant — Pilot HOA",
+  "agent_name": "Overnight Gate Attendant — The Inlets",
   "voice_id": "11labs-Adrian",
   "voice_temperature": 0.7,
   "voice_speed": 0.95,
@@ -15,7 +15,8 @@
     "attendant",
     "delivery",
     "vendor",
-    "unit"
+    "unit",
+    "Inlets"
   ],
   "end_call_after_silence_ms": 45000,
   "max_call_duration_ms": 600000,
@@ -29,7 +30,7 @@
       "type": "string",
       "name": "community_name",
       "description": "Community / HOA name for the call",
-      "examples": ["Pilot HOA"]
+      "examples": ["The Inlets"]
     },
     {
       "type": "string",

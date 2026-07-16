@@ -18,12 +18,14 @@ Unified repo for **We Lift**: autonomous overnight gate verification for myQ Com
 
 ### Quick start
 
-1. Copy `webhook/.env.example` → `webhook/.env` and set Twilio / Retell secrets.
-2. `cd webhook && ./run.sh` — expose with ngrok (see [webhook/README.md](webhook/README.md)).
+1. Copy `webhook/.env.example` → `webhook/.env` and set Twilio / Retell secrets (`DEFAULT_COMMUNITY=The Inlets`).
+2. `cd webhook && ./run.sh` — expose with ngrok, or deploy stable HTTPS ([webhook/DEPLOY.md](webhook/DEPLOY.md)).
 3. Create the Retell agent using [setup-checklist.md](setup-checklist.md) and point tools at your webhook URLs.
-4. Route myQ Call Attendant to the Retell DID for a pilot window.
+4. Route myQ Call Attendant to the Retell DID for a pilot window **only after** §5 cell tests pass.
 
-Phase 1: `open_gate` SMSes the on-call operator to unlock in myQ. Phase 2: direct myQ Community remote unlock.
+Phase 1: `open_gate` SMSes the on-call operator to unlock in myQ. Phase 2: set `MYQ_*` env vars for Partner API unlock (SMS fallback remains).
+
+**Pilot this week:** [docs/pilot-the-inlets/THIS-WEEK.md](docs/pilot-the-inlets/THIS-WEEK.md)
 
 ## Launch pack (analyst materials)
 

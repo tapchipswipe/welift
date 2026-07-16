@@ -19,14 +19,13 @@ Configs in this folder: [`configs/retell-llm.json`](configs/retell-llm.json), [`
 | Optional Twilio for real SMS | |
 
 ```bash
-cd 05-retell-agent/webhook
+cd webhook
 cp ../data/guest-list.example.json ../data/guest-list.json
-cp .env.example .env   # fill RETELL_API_KEY + ONCALL_PHONE
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn main:app --reload --port 8080
+cp .env.example .env   # fill RETELL_API_KEY + ONCALL_PHONE; DEFAULT_COMMUNITY=The Inlets
+./run.sh
 # other terminal:
 ngrok http 8080
+# Prefer stable HTTPS before CAM demos — see webhook/DEPLOY.md
 ```
 
 ---
@@ -36,9 +35,9 @@ ngrok http 8080
 **Option A — script**
 
 ```bash
-cd 05-retell-agent
+# from repo root
 source webhook/.venv/bin/activate
-python scripts/create_agent.py --webhook-base https://YOUR_NGROK.ngrok-free.app --community "Pilot HOA"
+python scripts/create_agent.py --webhook-base https://YOUR_HOST --community "The Inlets"
 ```
 
 **Option B — dashboard**
@@ -47,7 +46,7 @@ python scripts/create_agent.py --webhook-base https://YOUR_NGROK.ngrok-free.app 
 2. Paste **begin_message** and **general_prompt** from [`prompt.md`](prompt.md)
 3. Set temperature ~**0.2** (strict verifier)
 4. Add tools (see §2)
-5. Set dynamic variable `community_name` = `Pilot HOA` (change per HOA later)
+5. Set dynamic variable `community_name` = `The Inlets`
 
 ---
 

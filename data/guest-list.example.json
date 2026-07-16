@@ -1,7 +1,7 @@
 {
-  "community_name": "Pilot HOA",
+  "community_name": "The Inlets",
   "timezone": "America/New_York",
-  "notes": "Edit nightly. Matching is case-insensitive on visitor + host. Omit valid_from/valid_until (or set always_active) for pilot always-on entries.",
+  "notes": "Edit nightly. Matching is case-insensitive on visitor + host (token-order tolerant). Omit valid_from/valid_until (or set always_active) for pilot always-on entries. Copy to guest-list.json before go-live.",
   "entries": [
     {
       "visitor_name": "Jordan Lee",
@@ -25,7 +25,7 @@
       "host_address": "clubhouse",
       "visit_type": "delivery",
       "always_active": true,
-      "notes": "Example delivery"
+      "notes": "Example delivery — only approve if post orders allow named carriers"
     }
   ]
 }

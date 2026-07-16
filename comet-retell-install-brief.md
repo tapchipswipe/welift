@@ -21,9 +21,9 @@ The human must already have:
 Ask the human to paste these FILL-ME values before you start:
 
 ```
-WEBHOOK_BASE = FILL-ME   # example: https://abc123.ngrok-free.app
-COMMUNITY_NAME = Pilot HOA
-AGENT_NAME = Overnight Gate Attendant — Pilot HOA
+WEBHOOK_BASE = FILL-ME   # example: https://abc123.ngrok-free.app or Railway/Fly URL
+COMMUNITY_NAME = The Inlets
+AGENT_NAME = Overnight Gate Attendant — The Inlets
 ```
 
 Replace every `WEBHOOK_BASE` below with their exact value.
@@ -75,7 +75,7 @@ Thank you for calling the {{community_name}} gate. This is the overnight attenda
 If the UI does not support `{{community_name}}`, paste this instead (substitute the real community name):
 
 ```
-Thank you for calling the Pilot HOA gate. This is the overnight attendant. How can I help you?
+Thank you for calling the The Inlets gate. This is the overnight attendant. How can I help you?
 ```
 
 ---
@@ -126,7 +126,7 @@ TONE
 - Do not argue. Do not over-apologize. Do not promise opens you cannot complete.
 ```
 
-If `{{community_name}}` is not supported in prompts, replace every `{{community_name}}` with `Pilot HOA` (or the human’s COMMUNITY_NAME) before saving.
+If `{{community_name}}` is not supported in prompts, replace every `{{community_name}}` with `The Inlets` (or the human’s COMMUNITY_NAME) before saving.
 
 ---
 

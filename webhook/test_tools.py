@@ -3,11 +3,20 @@
 
 from __future__ import annotations
 
+import json
 import os
 import sys
+from pathlib import Path
 
 os.environ.setdefault("VERIFY_RETELL_SIGNATURES", "false")
 os.environ.setdefault("ONCALL_PHONE", "+19415551234")
+os.environ.setdefault("DEFAULT_COMMUNITY", "The Inlets")
+os.environ.setdefault("SERVERLESS", "true")
+
+# Prefer example guest list so tests don't need a local copy
+ROOT = Path(__file__).resolve().parents[1]
+example = ROOT / "data" / "guest-list.example.json"
+os.environ.setdefault("GUEST_LIST_PATH", str(example))
 
 from fastapi.testclient import TestClient
 
@@ -19,15 +28,17 @@ client = TestClient(main.app)
 def main_test() -> int:
     h = client.get("/health")
     assert h.status_code == 200, h.text
-    assert h.json()["status"] == "ok"
-    print("health OK", h.json())
+    body = h.json()
+    assert body["status"] == "ok"
+    assert body["community_default"] == "The Inlets"
+    print("health OK", body)
 
     r = client.post(
         "/tools/check_guest_list",
         json={
             "name": "check_guest_list",
             "args": {
-                "community_name": "Pilot HOA",
+                "community_name": "The Inlets",
                 "visitor_name": "Jordan Lee",
                 "host_name_or_address": "Sam Rivera",
                 "visit_type": "guest",
@@ -38,11 +49,26 @@ def main_test() -> int:
     assert r.json()["decision"] == "approve", r.json()
     print("check_guest_list APPROVE OK", r.json()["decision"])
 
+    # Token-order / partial host address match
     r = client.post(
         "/tools/check_guest_list",
         json={
             "args": {
-                "community_name": "Pilot HOA",
+                "community_name": "The Inlets",
+                "visitor_name": "Lee Jordan",
+                "host_name_or_address": "12 Oak",
+                "visit_type": "guest",
+            }
+        },
+    )
+    assert r.json()["decision"] == "approve", r.json()
+    print("check_guest_list FUZZY APPROVE OK")
+
+    r = client.post(
+        "/tools/check_guest_list",
+        json={
+            "args": {
+                "community_name": "The Inlets",
                 "visitor_name": "Nobody",
                 "host_name_or_address": "Unit 99",
             }
@@ -52,10 +78,24 @@ def main_test() -> int:
     print("check_guest_list DENY OK")
 
     r = client.post(
+        "/tools/check_guest_list",
+        json={
+            "args": {
+                "community_name": "The Inlets",
+                "visitor_name": "Ops",
+                "host_name_or_address": "CAM",
+                "visit_type": "ops",
+            }
+        },
+    )
+    assert r.json()["decision"] == "escalate"
+    print("check_guest_list OPS ESCALATE OK")
+
+    r = client.post(
         "/tools/open_gate",
         json={
             "args": {
-                "community_name": "Pilot HOA",
+                "community_name": "The Inlets",
                 "visitor_name": "Jordan Lee",
                 "host_name_or_address": "Sam Rivera",
                 "reason": "test open",
@@ -70,7 +110,7 @@ def main_test() -> int:
         "/tools/escalate_to_oncall",
         json={
             "args": {
-                "community_name": "Pilot HOA",
+                "community_name": "The Inlets",
                 "summary": "unclear names",
                 "urgency": "normal",
                 "visitor_name": "???",
@@ -83,6 +123,37 @@ def main_test() -> int:
     r = client.post("/retell/webhook", json={"event": "call_ended"})
     assert r.json()["ok"] is True
     print("retell/webhook OK")
+
+    # Inline guest list via env (serverless path)
+    os.environ["GUEST_LIST_JSON"] = json.dumps(
+        {
+            "community_name": "The Inlets",
+            "timezone": "America/New_York",
+            "entries": [
+                {
+                    "visitor_name": "Test Visitor",
+                    "host_name": "Host Person",
+                    "host_address": "1 Main",
+                    "visit_type": "guest",
+                    "always_active": True,
+                }
+            ],
+        }
+    )
+    # Reload module env-backed constants used at request time via GUEST_LIST_JSON
+    main.GUEST_LIST_JSON = os.environ["GUEST_LIST_JSON"]
+    r = client.post(
+        "/tools/check_guest_list",
+        json={
+            "args": {
+                "visitor_name": "Test Visitor",
+                "host_name_or_address": "Host Person",
+            }
+        },
+    )
+    assert r.json()["decision"] == "approve", r.json()
+    print("GUEST_LIST_JSON APPROVE OK")
+
     print("ALL WEBHOOKS PASS")
     return 0
 

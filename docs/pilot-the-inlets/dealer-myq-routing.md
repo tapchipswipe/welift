@@ -10,7 +10,7 @@ Integration is **phone routing**, not software on the tablet. Pattern from [01-m
 
 | # | Who | Why | Contact |
 |---|-----|-----|---------|
-| 1 | **CAM at The Inlets** | Facility admin, post orders, dealer of record | [PLACEHOLDER: CAM name / phone] |
+| 1 | **CAM at The Inlets** | Facility admin, post orders, dealer of record | Lead: Associa Gulf Coast (941) 552-1598 — confirm named CAM ([cam-identification.md](cam-identification.md)) |
 | 2 | **LiftMaster dealer of record** | CAP programming, Phone.com SIP, time-of-day routing | Ask CAM first |
 | 3 | **myQ Community support** | Confirm facility live, calling path, unlock permissions | **877-247-6764** (tech) · **800-282-6225** (solutions) |
 | 4 | **We Lift (Lucas)** | Retell DID + webhook must pass [setup-checklist.md](../../setup-checklist.md) §5 **before** any myQ forward | — |
