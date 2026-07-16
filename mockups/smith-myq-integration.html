@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Smith.ai × myQ Community — Gate Integration</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #1a2332;
+      --muted: #5a6a7a;
+      --paper: #f4f0e8;
+      --card: #ffffff;
+      --line: #d8d2c6;
+      --myq: #1a5f8a;
+      --smith: #2f6f5e;
+      --you: #8a4b2a;
+      --gate: #3d4450;
+      --ok: #2a7a4b;
+      --skip: #8a9aa8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "DM Sans", system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse 70% 40% at 50% 0%, #e4efe8 0%, transparent 55%),
+        var(--paper);
+      padding: 2rem 1.25rem 4rem;
+      line-height: 1.45;
+    }
+    .wrap { max-width: 980px; margin: 0 auto; }
+    header { margin-bottom: 2rem; max-width: 40rem; }
+    header h1 {
+      font-family: "Fraunces", Georgia, serif;
+      font-size: clamp(1.5rem, 3vw, 2rem);
+      font-weight: 700;
+      margin-bottom: 0.4rem;
+    }
+    header p { color: var(--muted); font-size: 1rem; }
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 0.75rem 1.25rem;
+      margin: 1.25rem 0 2rem; font-size: 0.85rem; font-weight: 600;
+    }
+    .legend span { display: flex; align-items: center; gap: 0.4rem; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot.myq { background: var(--myq); }
+    .dot.smith { background: var(--smith); }
+    .dot.you { background: var(--you); }
+    .dot.gate { background: var(--gate); }
+
+    section { margin-bottom: 2.75rem; }
+    section h2 {
+      font-family: "Fraunces", Georgia, serif;
+      font-size: 1.25rem;
+      margin-bottom: 0.35rem;
+    }
+    section .lead { color: var(--muted); font-size: 0.92rem; margin-bottom: 1.1rem; }
+
+    /* Physical scene */
+    .scene {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      gap: 1.25rem;
+    }
+    @media (max-width: 720px) { .scene { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 1.15rem 1.25rem;
+      box-shadow: 0 8px 24px rgba(26, 35, 50, 0.06);
+    }
+    .card h3 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 0.85rem;
+    }
+
+    .gate-visual {
+      background: linear-gradient(165deg, #2a3038, #15191e);
+      border-radius: 14px;
+      padding: 1.25rem;
+      color: #e8eee8;
+      min-height: 280px;
+      position: relative;
+      overflow: hidden;
+    }
+    .gate-visual::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        -12deg,
+        transparent,
+        transparent 18px,
+        rgba(255,255,255,0.02) 18px,
+        rgba(255,255,255,0.02) 19px
+      );
+      pointer-events: none;
+    }
+    .pedestal {
+      position: relative;
+      z-index: 1;
+      width: 160px;
+      margin: 0 auto;
+      background: #3a424c;
+      border-radius: 12px 12px 8px 8px;
+      padding: 10px;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.4);
+    }
+    .tablet {
+      background: #0e1218;
+      border-radius: 10px;
+      aspect-ratio: 3/4;
+      border: 2px solid #5a6570;
+      display: flex;
+      flex-direction: column;
+      padding: 8px;
+      gap: 6px;
+    }
+    .tablet .cam {
+      height: 6px; width: 6px; border-radius: 50%;
+      background: #c44; margin: 0 auto 4px; box-shadow: 0 0 6px #f66;
+    }
+    .tablet .ui {
+      flex: 1; background: #121a24; border-radius: 6px;
+      display: flex; flex-direction: column; justify-content: center;
+      align-items: center; gap: 8px; padding: 10px; text-align: center;
+    }
+    .tablet .ui .brand { font-size: 0.7rem; color: #8ab; font-weight: 600; }
+    .tablet .ui .btn {
+      width: 100%; background: var(--smith); color: #fff;
+      font-size: 0.65rem; font-weight: 700; padding: 8px 6px;
+      border-radius: 6px;
+    }
+    .tablet .ui .btn.ghost {
+      background: transparent; border: 1px solid #456; color: #bcd;
+    }
+    .post {
+      width: 40px; height: 36px; background: #2a3038;
+      margin: 0 auto; border-radius: 0 0 4px 4px;
+    }
+    .caption {
+      position: relative; z-index: 1;
+      text-align: center; margin-top: 1rem;
+      font-size: 0.8rem; color: #9aa;
+    }
+
+    .stack-list { list-style: none; display: flex; flex-direction: column; gap: 0.65rem; }
+    .stack-list li {
+      display: grid; grid-template-columns: 88px 1fr; gap: 0.65rem;
+      align-items: start; font-size: 0.88rem;
+    }
+    .tag {
+      font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.04em; padding: 4px 8px; border-radius: 6px;
+      text-align: center; color: #fff;
+    }
+    .tag.myq { background: var(--myq); }
+    .tag.smith { background: var(--smith); }
+    .tag.you { background: var(--you); }
+    .tag.gate { background: var(--gate); }
+
+    /* Flow */
+    .flow {
+      display: flex; flex-direction: column; gap: 0;
+    }
+    .step {
+      display: grid;
+      grid-template-columns: 48px 1fr;
+      gap: 0.85rem;
+      position: relative;
+    }
+    .step:not(:last-child) .rail::after {
+      content: "";
+      position: absolute;
+      left: 23px; top: 40px; bottom: -8px;
+      width: 2px; background: var(--line);
+    }
+    .num {
+      width: 48px; height: 48px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 1rem; color: #fff;
+      position: relative; z-index: 1;
+    }
+    .num.skip { background: var(--skip); }
+    .num.smith { background: var(--smith); }
+    .num.myq { background: var(--myq); }
+    .num.you { background: var(--you); }
+    .num.ok { background: var(--ok); }
+    .step-body {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 0.9rem 1rem;
+      margin-bottom: 0.75rem;
+    }
+    .step-body strong { display: block; margin-bottom: 0.2rem; }
+    .step-body p { font-size: 0.88rem; color: var(--muted); }
+    .badge {
+      display: inline-block; font-size: 0.68rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.04em;
+      padding: 2px 7px; border-radius: 4px; margin-bottom: 0.35rem;
+    }
+    .badge.no-call { background: #e8e4dc; color: var(--muted); }
+    .badge.smith-call { background: #d8ebe3; color: var(--smith); }
+    .badge.open { background: #d8edd8; color: var(--ok); }
+
+    /* Architecture */
+    .arch {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+      align-items: stretch;
+    }
+    @media (max-width: 720px) { .arch { grid-template-columns: 1fr; } }
+    .arch-box {
+      border-radius: 12px; padding: 1rem; color: #fff; font-size: 0.88rem;
+    }
+    .arch-box h4 { font-size: 0.95rem; margin-bottom: 0.5rem; }
+    .arch-box ul { margin: 0; padding-left: 1.1rem; opacity: 0.92; font-size: 0.82rem; }
+    .arch-box.gate { background: var(--gate); }
+    .arch-box.smith { background: var(--smith); }
+    .arch-box.myq { background: var(--myq); }
+    .arch-arrow {
+      display: none;
+    }
+    @media (min-width: 721px) {
+      .arch { grid-template-columns: 1fr auto 1fr auto 1fr; align-items: center; }
+      .arch-arrow {
+        display: flex; justify-content: center; color: var(--muted);
+        font-size: 1.5rem; font-weight: 700;
+      }
+    }
+
+    .callout {
+      background: #fff8ee;
+      border: 1px solid #e8d4b8;
+      border-radius: 12px;
+      padding: 1rem 1.15rem;
+      font-size: 0.9rem;
+      color: var(--ink);
+    }
+    .callout strong { color: var(--you); }
+
+    table {
+      width: 100%; border-collapse: collapse; font-size: 0.88rem;
+      background: var(--card); border-radius: 12px; overflow: hidden;
+      border: 1px solid var(--line);
+    }
+    th, td { text-align: left; padding: 0.7rem 0.85rem; border-bottom: 1px solid var(--line); }
+    th { background: #ebe6dc; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    tr:last-child td { border-bottom: none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Smith.ai × myQ Community integration</h1>
+      <p>How overnight virtual attendant works when the HOA already has a LiftMaster / myQ tablet at the gate — you don’t replace the tablet; you become the after-hours “answer the call” destination.</p>
+    </header>
+
+    <div class="legend">
+      <span><i class="dot gate"></i> Gate tablet (already there)</span>
+      <span><i class="dot myq"></i> myQ Community</span>
+      <span><i class="dot smith"></i> Smith.ai</span>
+      <span><i class="dot you"></i> Your company (rules + open)</span>
+    </div>
+
+    <section>
+      <h2>1. What’s already at the gate</h2>
+      <p class="lead">The tablet is the visitor’s UI. myQ is the brain for codes, passes, and unlocks. Smith.ai is only the overnight voice on the other end of “Call attendant.”</p>
+      <div class="scene">
+        <div class="gate-visual">
+          <div class="pedestal">
+            <div class="tablet">
+              <div class="cam"></div>
+              <div class="ui">
+                <div class="brand">myQ Community</div>
+                <div class="btn">Call attendant</div>
+                <div class="btn ghost">Enter code</div>
+                <div class="btn ghost">Guest pass</div>
+              </div>
+            </div>
+            <div class="post"></div>
+          </div>
+          <p class="caption">Existing pedestal tablet · 8pm–6am “Call attendant” routes to Smith.ai</p>
+        </div>
+        <div class="card">
+          <h3>Who owns what</h3>
+          <ul class="stack-list">
+            <li>
+              <span class="tag gate">Tablet</span>
+              <span>LiftMaster / myQ panel already installed — codes, directory, call button, camera</span>
+            </li>
+            <li>
+              <span class="tag myq">myQ</span>
+              <span>Cloud: credentials, guest passes, activity log, <strong>remote unlock</strong></span>
+            </li>
+            <li>
+              <span class="tag smith">Smith</span>
+              <span>Answers the forwarded call 8pm–6am @ ~$1.60/call — takes info, follows your script</span>
+            </li>
+            <li>
+              <span class="tag you">You</span>
+              <span>Post orders, guest lists, when to open, myQ login / unlock action, board reports, insurance</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>2. Visitor paths (most never hit Smith)</h2>
+      <p class="lead">Healthy economics = codes and guest passes do the work. Smith only handles exceptions.</p>
+      <div class="flow">
+        <div class="step">
+          <div class="rail"><div class="num skip">1</div></div>
+          <div class="step-body">
+            <span class="badge no-call">No Smith call</span>
+            <strong>Resident / vendor types code or scans pass on tablet</strong>
+            <p>myQ validates → gate opens. $0 to Smith. This should be the majority of traffic.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="rail"><div class="num skip">2</div></div>
+          <div class="step-body">
+            <span class="badge no-call">No Smith call</span>
+            <strong>Visitor rings a resident via directory</strong>
+            <p>Resident answers in myQ app, sees video, unlocks. Still $0 to Smith.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="rail"><div class="num smith">3</div></div>
+          <div class="step-body">
+            <span class="badge smith-call">Smith.ai call · $1.60</span>
+            <strong>Visitor taps “Call attendant” (or resident doesn’t answer)</strong>
+            <p>After hours, tablet SIP/phone destination is your Smith.ai number. Agent greets with community name and runs your script.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="rail"><div class="num you">4</div></div>
+          <div class="step-body">
+            <span class="badge smith-call">Verify</span>
+            <strong>Smith collects name, address, who they’re visiting</strong>
+            <p>Checks against guest list you provide (portal, shared sheet, or tools). Ambiguous → deny or escalate to you by SMS.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="rail"><div class="num myq">5</div></div>
+          <div class="step-body">
+            <span class="badge open">Open gate</span>
+            <strong>Approved → unlock via myQ</strong>
+            <p>Smith (or your automation) uses a myQ manager remote-open, or a dealer-set relay. Same unlock the property manager uses today.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="rail"><div class="num ok">6</div></div>
+          <div class="step-body">
+            <span class="badge open">Logged</span>
+            <strong>Visit logged for the board</strong>
+            <p>Smith call notes + myQ activity = monthly PDF. Tablet stays the hardware of record.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>3. System wiring (simple architecture)</h2>
+      <p class="lead">One schedule change on the tablet’s call routing is the main HOA-side change.</p>
+      <div class="arch">
+        <div class="arch-box gate">
+          <h4>Gate tablet</h4>
+          <ul>
+            <li>myQ / LiftMaster UI</li>
+            <li>Codes & guest pass entry</li>
+            <li>“Call attendant” button</li>
+            <li>Camera / intercom audio</li>
+          </ul>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-box smith">
+          <h4>Smith.ai</h4>
+          <ul>
+            <li>Receives after-hours call</li>
+            <li>Runs your gate script</li>
+            <li>Takes visitor details</li>
+            <li>Escalates edge cases to you</li>
+          </ul>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-box myq">
+          <h4>myQ Community</h4>
+          <ul>
+            <li>Guest lists / credentials</li>
+            <li>Remote gate unlock</li>
+            <li>Activity history</li>
+            <li>Resident app (unchanged)</li>
+          </ul>
+        </div>
+      </div>
+      <p class="callout" style="margin-top: 1rem;">
+        <strong>Dealer task (one-time):</strong> In myQ / CAP settings, set Guard / Attendant destination to Smith.ai for <strong>8:00pm–6:00am</strong>; all other hours stay booth or resident directory. You never rip out the tablet.
+      </p>
+    </section>
+
+    <section>
+      <h2>4. Who does the “open” click</h2>
+      <p class="lead">Three workable patterns — pick based on how much you trust Smith on day one.</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Pattern</th>
+            <th>How open happens</th>
+            <th>Best for</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>A · Shadow (week 1–2)</strong></td>
+            <td>Smith verifies → texts you → <em>you</em> remote-open in myQ</td>
+            <td>First HOA trial, lowest risk</td>
+          </tr>
+          <tr>
+            <td><strong>B · Smith opens</strong></td>
+            <td>Smith has myQ manager login / approved unlock workflow</td>
+            <td>After clean nights; still your post orders</td>
+          </tr>
+          <tr>
+            <td><strong>C · Auto on match</strong></td>
+            <td>Exact guest-list match triggers unlock API/relay; Smith only for misses</td>
+            <td>Scale; needs tighter integration</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>5. What you sell vs what myQ already sold</h2>
+      <div class="card">
+        <p style="font-size: 0.95rem; margin-bottom: 0.75rem;">
+          <strong>Pitch:</strong> “Keep your myQ tablet, codes, and guest passes. From 8pm to 6am, when someone has no code, Smith.ai + our playbook answers like a gate attendant — without a night booth.”
+        </p>
+        <ul class="stack-list">
+          <li>
+            <span class="tag myq">Keep</span>
+            <span>Tablet, myQ app, codes, guest passes, daytime booth if any</span>
+          </li>
+          <li>
+            <span class="tag smith">Add</span>
+            <span>Overnight live answering (Smith) trained on this community’s rules</span>
+          </li>
+          <li>
+            <span class="tag you">You</span>
+            <span>HOA contract, insurance, SOPs, QA, board reports, dealer relationship</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

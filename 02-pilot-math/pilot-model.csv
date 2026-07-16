@@ -1,0 +1,8 @@
+phase,communities,price_per_mo,coverage_hrs,monthly_revenue,overnight_agents,labor_mo,opex_mo,contribution_mo,hoa_status_quo_10hr_mo,hoa_savings_pct
+pilot_low,3,4800,10,14400,2,12000,5000,-2600,9125,47
+pilot_mid,5,4800,10,24000,2,14000,5500,4500,9125,47
+prove,10,4800,10,48000,3,20000,7000,21000,9125,47
+prove_plus,15,4800,10,72000,3,23000,7500,41500,9125,47
+expand,20,4800,10,96000,4,28000,9000,59000,9125,47
+scale,50,4800,10,240000,5,40000,18000,182000,9125,47
+status_quo_note,1,9125,10,9125,1,0,0,0,9125,0

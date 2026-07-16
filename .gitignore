@@ -5,5 +5,5 @@
 **/__pycache__/
 *.pyc
 .DS_Store
-data/events.jsonl
-data/guest-list.json
+**/data/events.jsonl
+**/data/guest-list.json

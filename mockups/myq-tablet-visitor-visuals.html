@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>myQ Tablet — Visitor Visual Mockups</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #15202b;
+      --muted: #5c6b7a;
+      --paper: #ece8e0;
+      --card: #fff;
+      --line: #d5cfc4;
+      --accent: #1f6b8a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "DM Sans", system-ui, sans-serif;
+      background: radial-gradient(ellipse 80% 50% at 50% -10%, #d9e6ea, transparent 50%), var(--paper);
+      color: var(--ink);
+      padding: 2rem 1.25rem 4rem;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; }
+    header { max-width: 40rem; margin-bottom: 1.75rem; }
+    h1 {
+      font-family: "Fraunces", Georgia, serif;
+      font-size: clamp(1.5rem, 3vw, 2rem);
+      margin-bottom: 0.4rem;
+    }
+    header p { color: var(--muted); font-size: 0.98rem; line-height: 1.5; }
+
+    .tabs {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .tabs button {
+      appearance: none; border: 1px solid var(--line); background: #fff;
+      border-radius: 999px; padding: 0.55rem 1rem; font: inherit;
+      font-size: 0.88rem; font-weight: 600; cursor: pointer; color: var(--ink);
+    }
+    .tabs button.active {
+      background: var(--ink); color: #fff; border-color: var(--ink);
+    }
+
+    .stage {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+    @media (max-width: 800px) { .stage { grid-template-columns: 1fr; } }
+
+    .frame {
+      background: #1a1f26;
+      border-radius: 20px;
+      padding: 0.85rem;
+      box-shadow: 0 24px 48px rgba(0,0,0,0.28);
+    }
+    .frame img {
+      width: 100%;
+      display: block;
+      border-radius: 12px;
+      background: #000;
+    }
+    .hidden { display: none !important; }
+
+    .side {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 1.25rem 1.35rem;
+    }
+    .side h2 {
+      font-family: "Fraunces", Georgia, serif;
+      font-size: 1.15rem;
+      margin-bottom: 0.4rem;
+    }
+    .side .meta {
+      font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.05em; color: var(--accent); margin-bottom: 0.75rem;
+    }
+    .side p { color: var(--muted); font-size: 0.92rem; line-height: 1.5; margin-bottom: 0.85rem; }
+    .side ul { padding-left: 1.1rem; color: var(--ink); font-size: 0.9rem; line-height: 1.55; }
+    .side li { margin-bottom: 0.35rem; }
+    .nav-row { display: flex; gap: 0.5rem; margin-top: 1.1rem; }
+    .nav-row button {
+      flex: 1; appearance: none; border: none; border-radius: 10px;
+      padding: 0.75rem; font: inherit; font-weight: 700; cursor: pointer;
+    }
+    .nav-row .prev { background: #ebe6dc; color: var(--ink); }
+    .nav-row .next { background: var(--accent); color: #fff; }
+
+    .strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.65rem;
+      margin-top: 1.5rem;
+    }
+    @media (max-width: 700px) { .strip { grid-template-columns: repeat(2, 1fr); } }
+    .thumb {
+      border: 2px solid transparent; border-radius: 12px; overflow: hidden;
+      cursor: pointer; background: #111; opacity: 0.72; transition: 0.15s;
+    }
+    .thumb.active, .thumb:hover { opacity: 1; border-color: var(--accent); }
+    .thumb img { width: 100%; display: block; aspect-ratio: 4/3; object-fit: cover; }
+    .note {
+      margin-top: 1.25rem; font-size: 0.82rem; color: var(--muted); line-height: 1.45;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>What the visitor sees on the myQ tablet</h1>
+      <p>Photoreal mockups of an already-installed myQ Community gate tablet when overnight “Call Attendant” routes to your Smith.ai-backed service (8pm–6am). The hardware stays LiftMaster/myQ — only the call destination changes.</p>
+    </header>
+
+    <div class="tabs" id="tabs"></div>
+
+    <div class="stage">
+      <div class="frame">
+        <img id="hero" alt="myQ tablet mockup" />
+      </div>
+      <aside class="side">
+        <div class="meta" id="meta"></div>
+        <h2 id="title"></h2>
+        <p id="desc"></p>
+        <ul id="bullets"></ul>
+        <div class="nav-row">
+          <button type="button" class="prev" id="prev">Back</button>
+          <button type="button" class="next" id="next">Next</button>
+        </div>
+      </aside>
+    </div>
+
+    <div class="strip" id="strip"></div>
+    <p class="note">Concept visuals for pitch / CAM conversations — not official LiftMaster UI. Real CAPXL screens vary by community background image and myQ config. Your product appears to the visitor as the person who answers when they tap Call Attendant after hours.</p>
+  </div>
+
+  <script>
+    const slides = [
+      {
+        id: "home",
+        tab: "1 · Home",
+        meta: "Step 1 · Visitor arrives",
+        title: "Call Attendant on the existing tablet",
+        desc: "Same myQ pedestal they already have. After 8pm, Call Attendant rings Smith.ai (trained on your post orders) instead of an empty booth.",
+        bullets: [
+          "Enter Code / guest pass still open the gate with no call (your $0 path)",
+          "Directory can still ring a resident’s myQ app",
+          "Call Attendant is the only path that spends a Smith.ai call"
+        ],
+        src: "assets/myq-tablet-call-attendant.png"
+      },
+      {
+        id: "calling",
+        tab: "2 · Calling",
+        meta: "Step 2 · Connecting",
+        title: "Calling overnight attendant…",
+        desc: "From the visitor’s point of view this is still “the gate calling the attendant.” Behind the scenes the VoIP destination is your Smith.ai number for 8pm–6am.",
+        bullets: [
+          "Target: answer in under ~60 seconds",
+          "Community name read from your script (“Oak Haven gate”)",
+          "Cancel returns to the home screen"
+        ],
+        src: "assets/myq-tablet-calling.png"
+      },
+      {
+        id: "live",
+        tab: "3 · On call",
+        meta: "Step 3 · Live with attendant",
+        title: "Smith.ai agent on the line",
+        desc: "Two-way audio through the tablet. Agent asks who they’re visiting, checks your guest list / rules, then unlocks via myQ (or texts you to unlock during week-1 shadow mode).",
+        bullets: [
+          "Visitor never sees “Smith.ai” branding unless you want it",
+          "You sell “overnight gate attendant,” not a call center brand",
+          "Call is logged for the board pack"
+        ],
+        src: "assets/myq-tablet-on-call.png"
+      },
+      {
+        id: "granted",
+        tab: "4 · Granted",
+        meta: "Step 4 · Access granted",
+        title: "Gate opens — welcome in",
+        desc: "myQ fires the same remote unlock a manager would use. Barrier rises. Anti-tailgate reminder stays on screen.",
+        bullets: [
+          "No new kiosk hardware required",
+          "Activity appears in myQ history + your monthly report",
+          "Denied visits get a clear retry / contact-host message (separate screen)"
+        ],
+        src: "assets/myq-tablet-granted.png"
+      }
+    ];
+
+    let i = 0;
+    const hero = document.getElementById("hero");
+    const tabs = document.getElementById("tabs");
+    const strip = document.getElementById("strip");
+
+    slides.forEach((s, idx) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = s.tab;
+      b.addEventListener("click", () => show(idx));
+      tabs.appendChild(b);
+
+      const t = document.createElement("button");
+      t.type = "button";
+      t.className = "thumb";
+      t.innerHTML = `<img src="${s.src}" alt="" />`;
+      t.addEventListener("click", () => show(idx));
+      strip.appendChild(t);
+    });
+
+    function show(idx) {
+      i = idx;
+      const s = slides[i];
+      hero.src = s.src;
+      hero.alt = s.title;
+      document.getElementById("meta").textContent = s.meta;
+      document.getElementById("title").textContent = s.title;
+      document.getElementById("desc").textContent = s.desc;
+      document.getElementById("bullets").innerHTML = s.bullets.map((x) => `<li>${x}</li>`).join("");
+      [...tabs.children].forEach((el, n) => el.classList.toggle("active", n === i));
+      [...strip.children].forEach((el, n) => el.classList.toggle("active", n === i));
+    }
+
+    document.getElementById("prev").onclick = () => show((i + slides.length - 1) % slides.length);
+    document.getElementById("next").onclick = () => show((i + 1) % slides.length);
+    show(0);
+  </script>
+</body>
+</html>
