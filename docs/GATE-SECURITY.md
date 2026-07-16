@@ -100,6 +100,7 @@ Deny: wrong/missing proof, outside window, claims resident (→ sticker/code), e
 ## 7. Open questions
 
 1. Daily rotate for standing vendors vs weekly?  
-2. SMS to dispatch only, or each tech’s phone?  
+2. **Default access contact = dispatch for multi-crew?** (Recommended: yes — see VENDOR-CONTACTS.md)  
 3. Same digits for keypad and AI proof PIN, or separate?  
-4. myQ native guest pass vs CAP vendor code slot (dealer-dependent)?
+4. myQ native guest pass vs CAP vendor code slot (dealer-dependent)?  
+5. When to build vendor portal so dispatch can assign “today’s tech phone”?
