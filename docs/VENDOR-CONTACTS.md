@@ -136,7 +136,7 @@ Mitigations for dispatch model: **daily rotate**, window expiry, log issuance, A
 1. **CAM authorizes companies + one access contact** (owner or dispatch).  
 2. **We Lift delivers codes to that contact** — not “every possible driver.”  
 3. **Large vendors route codes internally** like they route job tickets.  
-4. **Optional:** vendor portal / job-day tech phone for tighter or one-off visits.  
+4. **Optional:** [vendor portal](VENDOR-PORTAL.md) so dispatch assigns today’s tech phone and sends the code.  
 5. **AI** remains backup when the person at the pedestal has no code.
 
 ---
