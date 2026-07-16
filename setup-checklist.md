@@ -1,4 +1,4 @@
-# Retell Dashboard Setup — Overnight Gate Attendant
+# Retell Dashboard Setup — Gate Attendant
 
 Use this after the webhook is reachable on HTTPS (ngrok or deploy).
 
