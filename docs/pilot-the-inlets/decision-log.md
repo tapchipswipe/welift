@@ -2,8 +2,8 @@
 
 Locked product and pilot decisions. Update only by explicit owner change.
 
-**Last updated:** July 2026  
-**Pilot:** The Inlets · **Target:** August 2026
+**Last updated:** July 15, 2026  
+**Pilot:** The Inlets · **Target:** August 2026 (shadow / pre-CAM — see [pre-cam-playbook.md](pre-cam-playbook.md))
 
 ---
 
@@ -82,10 +82,54 @@ Bar for success: pedestal audio, routing, unlock, logging on live hardware.
 
 ---
 
+## Site & relationships (Lucas — Jul 15, 2026)
+
+| Item | Status |
+|------|--------|
+| **CAM relationship at The Inlets** | **None yet** — still at idea stage before formal CAM agreement |
+| **LiftMaster dealer of record** | **Unknown** |
+| **myQ admin** | **Unknown** |
+| **Facility details** (CAP model, Phone.com, current after-hours routing) | **Unknown** |
+
+---
+
+## Commercial (Lucas — Jul 15, 2026)
+
+| Item | Status |
+|------|--------|
+| **Pricing model** | **Pay by usage** — Lucas's idea; flat monthly not chosen yet |
+| **Price** | **TBD** — see usage bands in [pre-cam-playbook.md](pre-cam-playbook.md) §C |
+| **Contract** | **Unknown** — no agreement path yet |
+
+---
+
+## Legal (Lucas — Jul 15, 2026)
+
+| Item | Status |
+|------|--------|
+| **FL LLC** | **Not formed yet** |
+| **Class B license** | **None** |
+| **Insurance** | **None bound** — quote packet not sent |
+
+---
+
+## Technical (Lucas — Jul 15, 2026)
+
+| Item | Status |
+|------|--------|
+| **Retell** | **In progress** |
+| **Webhook** | **In progress** |
+| **Twilio** | **Not started** |
+| **Exceptions guest list maintainer** | **CAM or Lucas** — either can update nightly list |
+
+---
+
 ## Open items (not locked)
 
-- LiftMaster **dealer of record** for The Inlets (discovery in progress)
+- Identify CAM + dealer for The Inlets (see [pre-cam-playbook.md](pre-cam-playbook.md) §B)
 - myQ Partner API acceptance timeline
 - Class B license vs subcontract partner
-- Paid pilot fee and signed agreement timing
-- FL entity legal name for contracts/insurance
+- Usage pricing final numbers (bands TBD)
+- FL entity formation timing
+- August scope: shadow vs live pedestal ([pre-cam-playbook.md](pre-cam-playbook.md) §G)
+- Pivot deadline if The Inlets CAM cold (default Aug 1)

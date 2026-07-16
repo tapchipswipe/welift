@@ -12,6 +12,7 @@
 | Doc | Purpose |
 |-----|---------|
 | [decision-log.md](decision-log.md) | Locked product Q&A from Lucas |
+| **[pre-cam-playbook.md](pre-cam-playbook.md)** | **No CAM yet — timeline, outreach, pricing, tech order, legal, edge cases** |
 | [cam-kickoff-email.md](cam-kickoff-email.md) | Ready-to-send CAM outreach |
 | [dealer-myq-routing.md](dealer-myq-routing.md) | Zero → overnight Call Attendant → Retell DID |
 | [on-call-sms-sla.md](on-call-sms-sla.md) | Phase 1 on-call model, SLAs, env vars |
@@ -23,6 +24,8 @@
 ---
 
 ## August 2026 critical path
+
+> **Update (Jul 15):** No CAM at The Inlets yet. Use [pre-cam-playbook.md](pre-cam-playbook.md) first; treat **Aug 15 live** as stretch — **shadow + CAM demo** is the realistic August win. First pedestal live likely **Aug 29 – Sep 12** if outreach starts this week.
 
 Today → **Aug 1:** technical foundation. **Aug 1–15:** dealer routing + shadow nights. **Aug 15+:** live overnight (SMS bridge OK).
 
