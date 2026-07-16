@@ -95,60 +95,47 @@ Do not wait more than **2 weeks** on one HOA. Parallel path:
 
 ---
 
-## C) Pay-by-usage pricing model
+## C) Pricing — refined for vendor Call Attendant (low volume)
 
-Lucas's idea: **usage-based**, not flat monthly yet. Align with [02-pilot-math/pricing-insurance-subscription-deep-dive.md](../../02-pilot-math/pricing-insurance-subscription-deep-dive.md) and [one-hoa-full-ai-trial-deep-dive.md](../../02-pilot-math/one-hoa-full-ai-trial-deep-dive.md).
+**Do not sell this as overnight guard replacement** ($9k booth anchor). Sell **vendor desk / Call Attendant coverage**. See [PRODUCT.md](../PRODUCT.md).
 
-### Why not naked per-minute for CAM
+Lucas still wants **usage-aware** pricing; shape it for rare vendor calls:
 
-Boards budget **monthly retainers**. Pure per-minute feels like a utility bill and often under-collects vs insurance + on-call time. **Hybrid usage** keeps fairness without breaking pilot math.
+| Component | Pilot direction (TBD) | Rationale |
+|-----------|----------------------|-----------|
+| **Monthly platform** | **$399–$899 / mo** | Always-on DID, logging, list hosting, Retell — boards like one line item |
+| **Included verified opens** | **20–40 / mo** | Quiet vendor traffic; most nights = zero calls |
+| **Per extra verified open** | **$8–$15** | Renovation weeks / multi-crew days |
+| **Denied / spam calls** | **$0** (or negligible) | Don’t punish HOA for wrong numbers |
+| **Hard floor** | Cover insurance + Retell + your ops | Exact floor after quotes — don’t race to $0 |
 
-### Recommended structure (overnight 8pm–6am)
+**Drop from quotes:** per-open SMS labor fees and “nightly coverage × $89” framed as guard substitute.
 
-| Component | Pilot range (TBD — quote in band) | Rationale |
-|-----------|-----------------------------------|-----------|
-| **Nightly coverage minimum** | **$75–$99 / night** on duty | Covers platform, on-call standby, Retell DID — ~$1,650–$2,970/mo at 30 nights |
-| **Included handled calls** | **60 / mo** in minimum | ~2/night quiet gate; matches base-case volume |
-| **Per additional AI-handled call** | **$10–$15** | After included pool; 2.5 min avg @ $0.18 AI ≈ $0.45 cost → healthy margin |
-| **Per approved open** (SMS bridge) | **$15–$22** | Prices Lucas tap-to-unlock labor; optional line if bundled into call fee |
-| **Overage talk time** | **$0.50–$0.55 / min** after 3 min/call | Protects long arguments / language barriers |
-| **Hard monthly floor** | **≥ $995 effective** | Never below fixed-cost floor (~$900/mo in pilot math) |
-| **Target effective (paid pilot)** | **$2,500–$4,000 / mo** | Matches friends/trial tiers; still ~55% below ~$9k guard anchor |
-
-**Do not quote below $995/mo effective** — you lose money on insurance + time even if AI minutes are cheap.
-
-### Example invoice (CAM conversation — busy month)
+### Example invoice (quiet vendor month)
 
 ```
-We Lift — The Inlets — Overnight Attendant — September 2026 (usage)
-────────────────────────────────────────────────────────────────────
-Nightly coverage (30 nights × $89)                         $2,670
-AI-handled calls (186 total; 60 included, 126 × $12)     $1,512
-Approved opens (94 × $18)                                  $1,692
-Overage talk time (41 min × $0.55)                            $23
-Platform / SMS pass-through                                 $48
-────────────────────────────────────────────────────────────────────
-TOTAL                                                    $5,945
-Effective vs on-site guard (~$9,125/mo for 10 hrs):       ~35% savings
+We Lift — The Inlets — Vendor Call Attendant — September 2026
+────────────────────────────────────────────────────────────────
+Platform (Call Attendant + logging + list)                   $599
+Verified vendor opens (18 included)                            $0
+────────────────────────────────────────────────────────────────
+TOTAL                                                        $599
 ```
 
-### Example invoice (quiet month)
+### Example invoice (busy renovation week)
 
 ```
-Nightly coverage (30 × $89)                              $2,670
-AI-handled calls (72 total; 12 over included × $12)          $144
-Approved opens (28 × $18)                                  $504
-────────────────────────────────────────────────────────────────────
-TOTAL                                                    $3,318
+Platform                                                     $599
+Verified opens (52 total; 30 included, 22 × $12)             $264
+────────────────────────────────────────────────────────────────
+TOTAL                                                        $863
 ```
-
-Both land in **trial band ($2.5k–$4k)** on quiet months and **approach list ($4.8k)** when the gate is busy — usage-fair without undercutting [pilot-financial-model.md](../../02-pilot-math/pilot-financial-model.md).
 
 ### CAM one-liner
 
-> "Predictable **nightly minimum** so we're always on; you only pay extra when visitors actually need us. Quiet months stay ~$3k; busy months still beat an overnight guard."
+> "Residents keep codes and stickers. We only pick up Call Attendant for vendors who aren’t on those — check your list, open the gate, log it. Quiet months stay a small platform fee."
 
-**Price:** mark **TBD** in proposals until post-shadow volume data; show **ranges above** in first CAM meeting only if they ask.
+**Price:** show ranges only if asked; commit after shadow volume. Legacy high “guard replacement” bands in older `02-pilot-math` docs are **comparison archives**, not the default quote for this product.
 
 ---
 

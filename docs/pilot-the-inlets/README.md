@@ -11,6 +11,7 @@
 
 | Doc | Purpose |
 |-----|---------|
+| **[../PRODUCT.md](../PRODUCT.md)** | **Refined product thesis — read first** |
 | **[THIS-WEEK.md](THIS-WEEK.md)** | **Single checklist — tech + CAM + legal this week** |
 | [decision-log.md](decision-log.md) | Locked product Q&A from Lucas |
 | **[pre-cam-playbook.md](pre-cam-playbook.md)** | **No CAM yet — timeline, outreach, pricing, tech order, legal, edge cases** |

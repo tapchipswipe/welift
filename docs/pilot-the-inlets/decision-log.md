@@ -2,8 +2,10 @@
 
 Locked product and pilot decisions. Update only by explicit owner change.
 
-**Last updated:** July 16, 2026 (autonomous lock)  
-**Pilot:** The Inlets · **Target:** August 2026 (shadow / pre-CAM — see [pre-cam-playbook.md](pre-cam-playbook.md) · [THIS-WEEK.md](THIS-WEEK.md))
+**Last updated:** July 16, 2026 (idea refined — vendor Call Attendant)  
+**Pilot:** The Inlets · **Thesis:** [PRODUCT.md](../PRODUCT.md) · **This week:** [THIS-WEEK.md](THIS-WEEK.md)
+
+**Refined idea in one line:** Autonomous Call Attendant for authorized vendors/workers who lack resident codes/stickers — not a virtual overnight guard.
 
 ---
 
