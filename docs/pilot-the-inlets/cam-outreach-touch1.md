@@ -32,9 +32,10 @@ The Inlets at Riverdale — quick question on overnight gate / dealer contact
 ```
 Hi [CAM FIRST NAME],
 
-I'm Lucas Despot with We Lift (SWFL). I'm building overnight (8pm–6am)
-exception coverage for communities that already use LiftMaster myQ tablets —
-voice verify when a visitor can't use a guest pass or code.
+I'm Lucas Despot with We Lift (SWFL). I'm building overnight Call Attendant
+coverage for LiftMaster myQ gates — for the rare cases when someone without
+a resident code or sticker needs in (gardeners, pool techs, contractors).
+Residents keep using codes and stickers as they do today.
 
 I'm reaching out about The Inlets at Riverdale specifically. Before any
 product pitch, could you help with two facts?

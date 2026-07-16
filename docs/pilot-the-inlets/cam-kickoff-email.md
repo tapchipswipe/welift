@@ -21,11 +21,12 @@ I'm Lucas Despot with We Lift. We're setting up overnight (8:00pm–6:00am Easte
 virtual gate attendant coverage for The Inlets as a limited August pilot.
 
 HOW IT WORKS
-Visitors who already have a myQ guest pass or code enter as they do today — nothing
-changes for residents or self-serve guests. After hours, if someone still can't get in,
-they tap Call Attendant on the myQ tablet. The call routes to our voice attendant. We
-verify against your post orders and guest rules, and remotely open the gate when
-approved.
+Residents keep using keypad codes and RFID stickers — nothing changes for them.
+Social guests should still get a myQ guest pass when possible. We Lift only handles
+the exception path: someone without credentials (especially vendors and workers —
+gardeners, pool techs, contractors) taps Call Attendant on the myQ tablet. We
+verify against your authorized vendor / exception list and open the gate when
+approved — fully autonomous, no overnight human attendant.
 
 We are NOT replacing myQ guest passes, resident app unlocks, or your LiftMaster dealer.
 We only handle the overnight exception path when codes and passes don't work.

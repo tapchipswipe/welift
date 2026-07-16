@@ -41,15 +41,45 @@ def main_test() -> int:
             "name": "check_guest_list",
             "args": {
                 "community_name": "The Inlets",
+                "visitor_name": "Mike Torres",
+                "company_name": "GreenSide Lawn",
+                "host_name_or_address": "common areas",
+                "visit_type": "vendor",
+            },
+        },
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["decision"] == "approve", r.json()
+    print("check_guest_list VENDOR APPROVE OK")
+
+    r = client.post(
+        "/tools/check_guest_list",
+        json={
+            "args": {
+                "community_name": "The Inlets",
+                "visitor_name": "Crew Member",
+                "company_name": "GreenSide Lawn",
+                "host_name_or_address": "association",
+                "visit_type": "vendor",
+            }
+        },
+    )
+    assert r.json()["decision"] == "approve", r.json()
+    print("check_guest_list COMPANY APPROVE OK")
+
+    r = client.post(
+        "/tools/check_guest_list",
+        json={
+            "args": {
+                "community_name": "The Inlets",
                 "visitor_name": "Jordan Lee",
                 "host_name_or_address": "Sam Rivera",
                 "visit_type": "guest",
             },
         },
     )
-    assert r.status_code == 200, r.text
     assert r.json()["decision"] == "approve", r.json()
-    print("check_guest_list APPROVE OK")
+    print("check_guest_list GUEST APPROVE OK")
 
     r = client.post(
         "/tools/check_guest_list",
@@ -64,6 +94,19 @@ def main_test() -> int:
     )
     assert r.json()["decision"] == "approve", r.json()
     print("check_guest_list FUZZY APPROVE OK")
+
+    r = client.post(
+        "/tools/check_guest_list",
+        json={
+            "args": {
+                "visitor_name": "Resident Bob",
+                "host_name_or_address": "12 Oak",
+                "visit_type": "resident",
+            }
+        },
+    )
+    assert r.json()["decision"] == "deny", r.json()
+    print("check_guest_list RESIDENT DENY OK")
 
     r = client.post(
         "/tools/check_guest_list",
@@ -97,9 +140,9 @@ def main_test() -> int:
         json={
             "args": {
                 "community_name": "The Inlets",
-                "visitor_name": "Jordan Lee",
-                "host_name_or_address": "Sam Rivera",
-                "reason": "test open",
+                "visitor_name": "Mike Torres",
+                "host_name_or_address": "common areas",
+                "reason": "vendor approve",
             }
         },
     )

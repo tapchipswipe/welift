@@ -1,15 +1,33 @@
 {
   "community_name": "The Inlets",
   "timezone": "America/New_York",
-  "notes": "Edit nightly. Matching is case-insensitive on visitor + host (token-order tolerant). Omit valid_from/valid_until (or set always_active) for pilot always-on entries. Copy to guest-list.json before go-live.",
+  "notes": "Primary use: authorized vendors/workers (lawn, pool, pest, contractors). Residents use keypad codes + RFID stickers — not this list. Social guests prefer myQ guest passes. Matching is case-insensitive; company_name authorizes a crew when set.",
   "entries": [
+    {
+      "visitor_name": "Mike Torres",
+      "company_name": "GreenSide Lawn",
+      "host_name": "Association",
+      "host_address": "common areas",
+      "visit_type": "vendor",
+      "always_active": true,
+      "notes": "Weekly landscaping — test VENDOR APPROVE (company or tech name)"
+    },
+    {
+      "visitor_name": "Pool Tech",
+      "company_name": "AquaClear Pools",
+      "host_name": "Association",
+      "host_address": "clubhouse pool",
+      "visit_type": "vendor",
+      "always_active": true,
+      "notes": "Scheduled pool service"
+    },
     {
       "visitor_name": "Jordan Lee",
       "host_name": "Sam Rivera",
       "host_address": "12 Oak Lane",
       "visit_type": "guest",
       "always_active": true,
-      "notes": "Dinner guest — test APPROVE path"
+      "notes": "Secondary path — social guest only if no myQ pass (test APPROVE)"
     },
     {
       "visitor_name": "Alex Kim",
@@ -17,15 +35,7 @@
       "host_address": "44 Palm Court",
       "visit_type": "guest",
       "always_active": true,
-      "notes": "Overnight guest — test APPROVE path"
-    },
-    {
-      "visitor_name": "UPS Driver",
-      "host_name": "Front Desk",
-      "host_address": "clubhouse",
-      "visit_type": "delivery",
-      "always_active": true,
-      "notes": "Example delivery — only approve if post orders allow named carriers"
+      "notes": "Secondary path — overnight guest test"
     }
   ]
 }

@@ -27,7 +27,7 @@ Twilio is **not** required.
 | B1 | Call Associa Gulf Coast **(941) 552-1598** — Inlets at Riverdale CAM | [ ] | [cam-identification.md](cam-identification.md) |
 | B2 | Touch 1 email (info-first) | [ ] | [cam-outreach-touch1.md](cam-outreach-touch1.md) |
 | B3 | Parallel Gulf Coast AM + AMI | [ ] | |
-| B4 | Pitch: **autonomous overnight verify + open** — exceptions only; myQ passes primary | [ ] | |
+| B4 | Pitch: low-volume **vendor/worker** Call Attendant — residents keep codes/stickers | [ ] | [decision-log.md](decision-log.md) Q6–Q7 |
 | B5 | Aug 1 hard pivot if cold | [ ] | |
 
 ---

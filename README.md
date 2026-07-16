@@ -2,7 +2,7 @@
 
 Unified repo for **We Lift**: autonomous overnight gate verification for myQ Community (Retell voice agent) plus the SWFL launch pack (941 / 34211 corridor).
 
-**Beachhead:** 8:00pm–6:00am **autonomous** coverage on LiftMaster + myQ Community. Voice layer is **Retell AI** with tools (`check_guest_list`, `open_gate`, `escalate_to_oncall` = log-only). Unlock = **myQ Partner API**. Ambiguous visits are **denied** — no overnight human.
+**Beachhead:** Low-volume **Call Attendant** for non-residents who lack a keypad code or RFID sticker — mainly **vendors/workers** (gardeners, contractors). Residents keep codes/stickers. Voice = Retell; unlock = myQ Partner API; unsure = deny. No overnight human.
 
 ## Product (Retell agent)
 

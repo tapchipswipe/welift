@@ -55,17 +55,31 @@ Bar for success: pedestal audio, routing, unlock, logging on live hardware.
 
 ---
 
-## Q6 — Guest list / credentials (original question)
+## Q6 — Guest list / credentials
 
-**Decision:** **Residents use myQ guest passes and codes** as primary entry. **AI handles exceptions only** — visitors who cannot self-serve after hours.
+**Decision:** Normal gate access stays as today. **AI is a low-volume exception path for non-residents.**
+
+| Path | Who | How they enter |
+|------|-----|----------------|
+| **Primary — residents** | Homeowners / tenants | **Keypad code** or **RFID sticker / transponder** (unchanged) |
+| **Primary — invited guests** | Social visitors | **myQ guest pass** or host-provided code (preferred) |
+| **AI Call Attendant** | **Non-residents without code/sticker** — mainly **gardeners, lawn/pool/pest, contractors, workers** | Voice verify against CAM vendor / exception list → autonomous myQ unlock |
 
 | Who maintains list | Model |
 |---------------------|--------|
-| Residents | myQ guest passes (preferred path) |
-| CAM / board | Post orders, vendor rules, deny/escalate policy |
-| We Lift | Nightly exception list in `data/guest-list.json` only as needed for pilot; not replacing myQ passes |
+| Residents | Codes, stickers, myQ guest passes |
+| CAM / board | Vendor / worker authorization list + post orders |
+| We Lift | Hosts `guest-list.json` (vendor-first) for the AI — not a resident directory |
 
-**Note:** “CAM” = Community Association Manager — management company or on-staff manager running the HOA day to day.
+**Volume expectation:** Call Attendant used **rarely** (any hour of coverage). Product math should assume low concurrency, not a busy guard booth.
+
+**Note:** “CAM” = Community Association Manager.
+
+---
+
+## Q7 — Primary AI audience (Lucas — Jul 16, 2026)
+
+**Decision:** Target users of the AI are **vendors and workers** (e.g. gardeners) who do not have resident credentials — **not** residents and not the default path for social guests.
 
 ---
 
@@ -74,11 +88,11 @@ Bar for success: pedestal audio, routing, unlock, logging on live hardware.
 | Topic | Decision |
 |-------|----------|
 | **Brand** | **We Lift** (repo: [welift](https://github.com/tapchipswipe/welift)) |
-| **Coverage window** | 8:00pm–6:00am Eastern |
-| **Users of AI** | **Visitors at pedestal only** — not residents |
-| **Residents** | Continue myQ app, codes, guest passes — unchanged |
-| **On-call Phase 1** | **None** — autonomous overnight; daytime log review only |
-| **Repo** | Single monorepo `welift` (launch pack + product code merged) |
+| **Coverage window** | 8:00pm–6:00am Eastern (pilot hours; exception path stays low-volume anytime) |
+| **Users of AI** | **Non-resident exceptions at pedestal** — vendors/workers first |
+| **Residents** | Keypad + sticker only — AI must redirect, never open as resident unlock |
+| **Overnight human** | **None** — autonomous; daytime log review only |
+| **Repo** | Single monorepo `welift` |
 | **Target month** | **August 2026** first live overnight |
 
 ---

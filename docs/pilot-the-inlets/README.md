@@ -2,7 +2,7 @@
 
 **Pilot HOA:** The Inlets (SWFL)  
 **Target go-live:** August 2026 — overnight **8:00pm–6:00am Eastern**  
-**Product:** **Autonomous** voice attendant at the myQ tablet — AI verifies + myQ API opens; visitors only; guest passes primary; unclear visits **denied** (no overnight human)  
+**Product:** **Autonomous** Call Attendant for **vendors/workers** (and other non-residents without code/sticker). Residents keep keypad + RFID. Guest passes preferred for social guests. Unclear → deny. No overnight human.  
 **Unlock:** myQ Partner API only (`SIMULATE_MYQ_OPEN` for demos)
 
 ---
@@ -60,4 +60,4 @@ Today → **Aug 1:** technical foundation. **Aug 1–15:** dealer routing + shad
 
 ## One-line visitor story
 
-> Codes and myQ guest passes work as today. After 8pm, if a visitor still can't get in, they tap **Call Attendant** → AI verifies → gate opens automatically if approved. If not on the list, they are denied until the host sends a myQ guest pass.
+> Residents use codes and stickers as today. Social guests use myQ passes. After hours, if a **vendor or worker** without credentials taps **Call Attendant**, AI verifies them against the association’s authorized list and opens the gate — or denies if they’re not on it.

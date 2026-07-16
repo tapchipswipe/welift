@@ -383,6 +383,7 @@ async def check_guest_list(
     community = (args.get("community_name") or DEFAULT_COMMUNITY).strip()
     visitor = (args.get("visitor_name") or "").strip()
     host = (args.get("host_name_or_address") or "").strip()
+    company = (args.get("company_name") or "").strip()
     visit_type = (args.get("visit_type") or "").strip().lower()
 
     # Autonomous night policy: ambiguous / ops → deny (log), never wake a human.
@@ -399,7 +400,39 @@ async def check_guest_list(
         _append_event({"tool": "check_guest_list", "args": args, "result": result})
         return JSONResponse(result)
 
-    if not visitor or not host:
+    # Residents should use keypad code or RFID sticker — AI is for vendors/workers.
+    if visit_type == "resident":
+        result = {
+            "decision": "deny",
+            "confidence": "high",
+            "message": (
+                "Caller claims to be a resident. Do not open via AI. Tell them to use "
+                "their gate code on the keypad or their resident sticker/transponder. "
+                "If those fail, they must contact management during business hours."
+            ),
+            "community_name": community,
+        }
+        _append_event({"tool": "check_guest_list", "args": args, "result": result})
+        return JSONResponse(result)
+
+    # Vendors/workers: person or company + where they're working. Social guests: name + host.
+    is_vendorish = visit_type in {"vendor", "delivery", "worker"} or bool(company)
+    if is_vendorish:
+        if not visitor and not company:
+            result = {
+                "decision": "deny",
+                "confidence": "low",
+                "message": (
+                    "Need worker name and/or company name for vendor entry. "
+                    "Ask once more; if still incomplete, deny — do not open."
+                ),
+                "community_name": community,
+            }
+            _append_event({"tool": "check_guest_list", "args": args, "result": result})
+            return JSONResponse(result)
+        if not host:
+            host = "association"
+    elif not visitor or not host:
         result = {
             "decision": "deny",
             "confidence": "low",
@@ -434,11 +467,31 @@ async def check_guest_list(
     for entry in book.get("entries", []):
         if not _entry_active(entry, now, tz_name):
             continue
-        visitor_ok = _names_match(visitor, entry.get("visitor_name", ""))
-        host_ok = _names_match(host, entry.get("host_name", "")) or _names_match(
-            host, entry.get("host_address", "")
+        visitor_ok = bool(visitor) and _names_match(
+            visitor, entry.get("visitor_name", "")
         )
-        if visitor_ok and host_ok:
+        company_ok = bool(company) and (
+            _names_match(company, entry.get("company_name", ""))
+            or _names_match(company, entry.get("visitor_name", ""))
+        )
+        # Vendor lists often authorize a company (any crew) or a named tech.
+        identity_ok = visitor_ok or company_ok
+        if is_vendorish and company and entry.get("company_name"):
+            identity_ok = company_ok or (
+                visitor_ok and _names_match(company, entry.get("company_name", ""))
+            )
+        host_ok = (
+            _names_match(host, entry.get("host_name", ""))
+            or _names_match(host, entry.get("host_address", ""))
+            or (
+                is_vendorish
+                and _normalize(host)
+                in {"association", "hoa", "community", "common areas", "commons"}
+                and (entry.get("visit_type") or "").lower()
+                in {"vendor", "delivery", "worker", ""}
+            )
+        )
+        if identity_ok and host_ok:
             matches.append(entry)
 
     if len(matches) == 1:
@@ -462,6 +515,7 @@ async def check_guest_list(
                 ),
                 "matched_entry": {
                     "visitor_name": m.get("visitor_name"),
+                    "company_name": m.get("company_name"),
                     "host_name": m.get("host_name"),
                     "host_address": m.get("host_address"),
                     "visit_type": m.get("visit_type"),
@@ -474,12 +528,14 @@ async def check_guest_list(
                 "confidence": "high",
                 "matched_entry": {
                     "visitor_name": m.get("visitor_name"),
+                    "company_name": m.get("company_name"),
                     "host_name": m.get("host_name"),
                     "host_address": m.get("host_address"),
                     "visit_type": m.get("visit_type"),
                 },
                 "message": (
-                    f"Approved: {m.get('visitor_name')} visiting "
+                    f"Approved: {m.get('company_name') or m.get('visitor_name')} "
+                    f"({m.get('visitor_name')}) for "
                     f"{m.get('host_name')} ({m.get('host_address')}). "
                     f"Notes: {m.get('notes') or 'none'}. Call open_gate next."
                 ),
