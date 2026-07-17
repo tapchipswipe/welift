@@ -609,33 +609,33 @@ async def gate_verify_code(request: Request) -> JSONResponse:
     if not code:
         raise HTTPException(status_code=400, detail="code required")
 
-    store = creds.load_store()
-    now = creds._now()
-    matched_cred = None
     hashed_code = creds._hash_code(code)
+    now = datetime.now(timezone.utc)
 
-    for c in store.get("credentials", []):
-        if c.get("status") != "active":
-            continue
-        cred_comm = c.get("community") or c.get("community_name")
-        if cred_comm != community:
-            continue
-        until = creds._parse_iso(c.get("valid_until"))
-        if until and now > until:
-            continue
-        if c.get("code_hash") == hashed_code:
-            matched_cred = c
-            break
+    db = models.SessionLocal()
+    try:
+        # Find active credentials for this community and code hash
+        c = db.query(models.Credential).filter(
+            models.Credential.status == "active",
+            models.Credential.community == community,
+            models.Credential.code_hash == hashed_code
+        ).first()
 
-    if matched_cred:
-        myq = _try_myq_unlock("main")
-        result = {
-            "ok": True,
-            "company_name": matched_cred.get("company_name"),
-            "myq": myq
-        }
-        _append_event({"tool": "gate_keypad_entry", "code": "***", "result": result})
-        return JSONResponse(result)
+        if c:
+            until = c.valid_until
+            if until.tzinfo is None:
+                until = until.replace(tzinfo=timezone.utc)
+            if now <= until:
+                myq = _try_myq_unlock("main")
+                result = {
+                    "ok": True,
+                    "company_name": c.company_name,
+                    "myq": myq
+                }
+                _append_event({"tool": "gate_keypad_entry", "code": "***", "result": result})
+                return JSONResponse(result)
+    finally:
+        db.close()
 
     return JSONResponse({"ok": False, "reason": "invalid_code"})
 

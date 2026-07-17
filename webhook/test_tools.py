@@ -246,6 +246,24 @@ def main_test() -> int:
     assert r.json()["decision"] == "approve", r.json()
     print("GUEST_LIST_JSON APPROVE OK")
 
+    # Test gate verify code
+    r = client.post(
+        "/gate/verify_code",
+        json={"code": code, "community_name": "The Inlets"}
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["ok"] is True, r.json()
+    assert r.json()["company_name"] == "GreenSide Lawn"
+    print("gate_verify_code OK")
+
+    # Test gate verify wrong code
+    r = client.post(
+        "/gate/verify_code",
+        json={"code": "000000", "community_name": "The Inlets"}
+    )
+    assert r.json()["ok"] is False, r.json()
+    print("gate_verify_code WRONG CODE OK")
+
     print("ALL WEBHOOKS PASS")
     return 0
 

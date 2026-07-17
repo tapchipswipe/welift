@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import twilio from "twilio";
-import prisma from "./prisma";
+import { getActiveVendors, getCommunity, rotateActiveCredentials, insertCredential, insertDelivery } from "./db";
 
 const WINDOW_REGEX = /^([A-Za-z,\-\s]+)\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})$/;
 
@@ -226,7 +226,7 @@ export function vendorWindowAllows(
 export async function findVendor(companyName: string, includeInactive = false) {
   const normName = normalizeCompany(companyName);
   if (!normName) return null;
-  const vendors = await prisma.vendorCompany.findMany();
+  const vendors = getActiveVendors();
   for (const v of vendors) {
     const cn = normalizeCompany(v.company_name);
     if (cn === normName || normName.includes(cn) || cn.includes(normName)) {
@@ -259,9 +259,7 @@ export async function mintCredential({
   const vendor = await findVendor(cleanCompanyName);
   const displayCompany = vendor ? vendor.company_name : cleanCompanyName;
 
-  const comm = await prisma.community.findUnique({
-    where: { name: cleanCommunity },
-  });
+  const comm = getCommunity(cleanCommunity);
   const tz = comm ? comm.timezone : "America/New_York";
 
   const rand = crypto.randomInt(0, 1000000);
@@ -278,32 +276,26 @@ export async function mintCredential({
   const norm = normalizeCompany(displayCompany);
 
   // Rotate existing active credentials
-  await prisma.credential.updateMany({
-    where: {
-      status: "active",
-      community: cleanCommunity,
-      company_key: norm,
-    },
-    data: {
-      status: "rotated",
-    },
-  });
+  rotateActiveCredentials(cleanCommunity, norm);
 
   const credId = crypto.randomBytes(8).toString("hex");
-  const newCred = await prisma.credential.create({
-    data: {
-      id: credId,
-      community: cleanCommunity,
-      company_name: displayCompany,
-      company_key: norm,
-      code_hash: hashCode(code),
-      last4: code.slice(-4),
-      status: "active",
-      created_at: now,
-      valid_until: expires,
-      created_by: actor,
-    },
+  const nowIso = now.toISOString();
+  const expiresIso = expires.toISOString();
+
+  insertCredential({
+    id: credId,
+    community: cleanCommunity,
+    company_name: displayCompany,
+    company_key: norm,
+    code_hash: hashCode(code),
+    last4: code.slice(-4),
+    status: "active",
+    created_at: nowIso,
+    valid_until: expiresIso,
+    created_by: actor,
   });
+
+  const newCred = { id: credId };
 
   return {
     id: credId,
@@ -312,8 +304,8 @@ export async function mintCredential({
     company_key: norm,
     last4: code.slice(-4),
     status: "active",
-    created_at: now.toISOString(),
-    valid_until: expires.toISOString(),
+    created_at: nowIso,
+    valid_until: expiresIso,
     created_by: actor,
     code,
   };
@@ -419,20 +411,18 @@ export async function sendCode({
   const sms = await sendSms(to, body);
 
   const deliveryId = crypto.randomBytes(6).toString("hex");
-  await prisma.delivery.create({
-    data: {
-      id: deliveryId,
-      credential_id: minted.id,
-      community: cleanCommunity,
-      company_name: minted.company_name,
-      to_masked: sms.to_masked,
-      channel: sms.channel,
-      status: sms.status,
-      actor,
-      ts: new Date(),
-      last4: minted.last4,
-      window_override: overrideWindow,
-    },
+  insertDelivery({
+    id: deliveryId,
+    credential_id: minted.id,
+    community: cleanCommunity,
+    company_name: minted.company_name,
+    to_masked: sms.to_masked,
+    channel: sms.channel,
+    status: sms.status,
+    actor,
+    ts: new Date().toISOString(),
+    last4: minted.last4,
+    window_override: overrideWindow ? 1 : 0,
   });
 
   return {

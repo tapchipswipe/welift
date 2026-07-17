@@ -1,7 +1,7 @@
 "use server";
 
 import { currentUser } from "@clerk/nextjs/server";
-import prisma from "@/lib/prisma";
+import { getActiveVendors, getCommunity, getRecentDeliveries } from "@/lib/db";
 import { sendCode, vendorWindowAllows } from "@/lib/credentials";
 
 export async function getDispatcherContext() {
@@ -16,9 +16,7 @@ export async function getDispatcherContext() {
   }
 
   // Find all active vendor companies matching this email
-  const allActiveVendors = await prisma.vendorCompany.findMany({
-    where: { active: true },
-  });
+  const allActiveVendors = getActiveVendors();
 
   const matchingVendors = allActiveVendors.filter(
     (v) => v.invite_email?.toLowerCase() === email
@@ -37,10 +35,8 @@ export async function getDispatcherContext() {
   // Let's gather all vendor companies and check window authorizations
   const results = [];
   for (const vendor of matchingVendors) {
-    const community = await prisma.community.findUnique({
-      where: { name: vendor.community_name },
-    });
-    const tz = community?.timezone || "America/New_York";
+    const comm = getCommunity(vendor.community_name);
+    const tz = comm?.timezone || "America/New_York";
     const windowCheck = vendorWindowAllows(vendor, new Date(), tz);
     
     results.push({
@@ -53,19 +49,8 @@ export async function getDispatcherContext() {
     });
   }
 
-  // Fetch audit history (last 20 deliveries for this vendor company / companies)
   const companyNames = matchingVendors.map((v) => v.company_name);
-  const deliveries = await prisma.delivery.findMany({
-    where: {
-      company_name: {
-        in: companyNames,
-      },
-    },
-    orderBy: {
-      ts: "desc",
-    },
-    take: 20,
-  });
+  const deliveries = getRecentDeliveries(companyNames);
 
   return {
     authenticated: true,
@@ -80,7 +65,7 @@ export async function getDispatcherContext() {
       channel: d.channel,
       status: d.status,
       technicianName: d.actor,
-      timestamp: d.ts.toISOString(),
+      timestamp: d.ts,
       last4: d.last4,
     })),
   };
@@ -117,9 +102,7 @@ export async function sendCodeAction(data: {
     }
 
     // Find the vendor company matching this email and community
-    const allActiveVendors = await prisma.vendorCompany.findMany({
-      where: { active: true },
-    });
+    const allActiveVendors = getActiveVendors();
 
     const vendor = allActiveVendors.find(
       (v) =>

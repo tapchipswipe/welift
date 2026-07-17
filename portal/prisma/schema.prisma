@@ -50,8 +50,8 @@ model Credential {
   last4        String
   code_hash    String   @map("code_hash")
   status       String   @default("active")
-  created_at   DateTime @default(now()) @map("created_at")
-  valid_until  DateTime @map("valid_until")
+  created_at   String   @default("") @map("created_at")
+  valid_until  String   @default("") @map("valid_until")
   created_by   String   @default("cam_desk") @map("created_by")
 
   @@map("credentials")
@@ -66,9 +66,9 @@ model Delivery {
   channel         String
   status          String
   actor           String
-  ts              DateTime @default(now())
+  ts              String   @default("")
   last4           String
-  window_override Boolean  @default(false) @map("window_override")
+  window_override Int      @default(0) @map("window_override")
 
   @@map("deliveries")
 }
