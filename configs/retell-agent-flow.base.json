@@ -1,22 +1,39 @@
 {
   "agent_id": "",
   "channel": "voice",
-  "last_modification_timestamp": 1784169536500,
+  "last_modification_timestamp": 1784228814064,
   "agent_name": "Gate Attendant — The Inlets",
   "response_engine": {
     "type": "conversation-flow",
     "version": 0,
     "conversation_flow_id": "conversation_flow_gate_inlets_001"
   },
+  "webhook_url": "https://REPLACE_WITH_WEBHOOK_HOST/retell/webhook",
   "language": "en-US",
   "data_storage_setting": "everything",
+  "opt_in_signed_url": false,
   "version": 0,
   "assigned_tags": [],
   "is_published": false,
+  "version_title": "testing",
   "post_call_analysis_model": "gpt-4.1",
-  "handbook_config": {
-    "natural_filler_words": true
+  "pii_config": {
+    "mode": "post_call",
+    "categories": []
   },
+  "handbook_config": {
+    "conversational_personality": false,
+    "echo_verification": true,
+    "speech_normalization": true,
+    "default_personality": false,
+    "scope_boundaries": true,
+    "natural_filler_words": false,
+    "nato_phonetic_alphabet": false,
+    "high_empathy": false,
+    "ai_disclosure": false,
+    "smart_matching": true
+  },
+  "timezone": "America/New_York",
   "post_call_analysis_data": [
     {
       "type": "string",
@@ -37,9 +54,18 @@
     {
       "type": "string",
       "name": "host_name_or_address",
-      "description": "Resident name or unit/address",
+      "description": "Resident name, unit/address, or work location",
       "examples": [
-        "Sam Rivera unit 12"
+        "Sam Rivera unit 12",
+        "clubhouse"
+      ]
+    },
+    {
+      "type": "string",
+      "name": "company_name",
+      "description": "Vendor/company name if provided",
+      "examples": [
+        "GreenSide Lawn"
       ]
     },
     {
@@ -48,7 +74,6 @@
       "description": "Final access decision",
       "choices": [
         "opened",
-        "pending_human_open",
         "denied",
         "escalated",
         "abandoned",
@@ -61,182 +86,26 @@
       "description": "Whether open_gate was invoked"
     }
   ],
-  "voice_id": "11labs-Adrian",
+  "voice_id": "11labs-Anthony",
+  "voice_temperature": 0.7,
+  "voice_speed": 0.95,
+  "volume": 1,
   "max_call_duration_ms": 600000,
   "interruption_sensitivity": 0.7,
+  "allow_user_dtmf": true,
   "user_dtmf_options": {},
   "conversationFlow": {
     "conversation_flow_id": "conversation_flow_gate_inlets_001",
     "version": 0,
-    "last_modification_timestamp": 1784169536491,
-    "global_prompt": "## Objective\nYou are the autonomous gate attendant for {{community_name}} (Call Attendant on the LiftMaster / myQ tablet — available whenever this line is routed here).\n\nCurrent time is {{current_time}}\n{{community_name}} defaults to \"The Inlets\" if unset.\n\n## How this gate works\n- Residents enter with a keypad CODE or resident STICKER / transponder — that is not your job.\n- Social guests should use a myQ guest pass or code from the resident when possible.\n- YOU handle exceptions: people without a code or sticker — especially vendors and workers (gardeners, lawn, pool, pest, contractors, deliveries scheduled by the association).\n\n## Rules\n- You alone verify and open or deny. There is NO human sitting this line with you.\n- Never invent approvals. Never give gate codes, PINs, passwords, or resident phone numbers.\n- When unsure: DENY. Never open on a maybe. Never promise a human will come open the gate.\n- Speak clearly, slowly, short answers (1–2 sentences). Repeat back names and company names.\n- Audio may be noisy — ask once to repeat if unclear; still unclear → deny.\n- Never say \"let me check with someone\" or \"an attendant is on the way.\"\n\n## Tools\n- check_guest_list: after collecting identity (+ company for vendors). Always before open_gate.\n- open_gate: ONLY after check_guest_list returned approve.\n- escalate_to_oncall: management review log only — does not page a human; still deny unless already approved + opened.\n",
-    "tools": [
-      {
-        "type": "custom",
-        "name": "check_guest_list",
-        "description": "Verify a non-resident (especially vendor/worker) against the authorized list. Residents should use keypad/sticker — if visit_type resident, expect deny. Always call before open_gate. Include company_name for vendors.",
-        "url": "https://REPLACE_WITH_WEBHOOK_HOST/tools/check_guest_list",
-        "method": "POST",
-        "speak_during_execution": true,
-        "speak_after_execution": true,
-        "execution_message_description": "Say briefly that you are checking the guest list.",
-        "timeout_ms": 15000,
-        "parameters": {
-          "type": "object",
-          "required": [
-            "community_name",
-            "visitor_name",
-            "host_name_or_address"
-          ],
-          "properties": {
-            "community_name": {
-              "type": "string",
-              "description": "HOA / community name for this gate"
-            },
-            "visitor_name": {
-              "type": "string",
-              "description": "Full name of the person at the gate"
-            },
-            "host_name_or_address": {
-              "type": "string",
-              "description": "Resident full name and/or unit/address they claim to be visiting"
-            },
-            "visit_type": {
-              "type": "string",
-              "description": "guest, delivery, vendor, worker, resident, ops, or other",
-              "enum": [
-                "guest",
-                "delivery",
-                "vendor",
-                "worker",
-                "resident",
-                "ops",
-                "other"
-              ]
-            },
-            "company_name": {
-              "type": "string",
-              "description": "Vendor/company name (lawn, pool, contractor, etc.)"
-            }
-          }
-        },
-        "tool_id": "tool_check_guest_list_welift_inlets"
-      },
-      {
-        "type": "custom",
-        "name": "open_gate",
-        "description": "Command autonomous gate unlock via myQ after check_guest_list returned approve. Only call on approve. If status failed, deny and tell visitor to use myQ guest pass — do not mention a human.",
-        "url": "https://REPLACE_WITH_WEBHOOK_HOST/tools/open_gate",
-        "method": "POST",
-        "speak_during_execution": true,
-        "speak_after_execution": true,
-        "execution_message_description": "Say you are opening the gate now and they should wait.",
-        "timeout_ms": 20000,
-        "parameters": {
-          "type": "object",
-          "required": [
-            "community_name",
-            "visitor_name",
-            "host_name_or_address",
-            "reason"
-          ],
-          "properties": {
-            "community_name": {
-              "type": "string",
-              "description": "HOA / community name"
-            },
-            "visitor_name": {
-              "type": "string",
-              "description": "Verified visitor full name"
-            },
-            "host_name_or_address": {
-              "type": "string",
-              "description": "Verified host name or address"
-            },
-            "reason": {
-              "type": "string",
-              "description": "Short reason, e.g. guest list match for unit 12"
-            },
-            "entrance": {
-              "type": "string",
-              "description": "Gate / entrance id if known; default main"
-            }
-          }
-        },
-        "tool_id": "tool_open_gate_welift_inlets"
-      },
-      {
-        "type": "custom",
-        "name": "escalate_to_oncall",
-        "description": "Log an ambiguous/ops/failed situation for management review. Does NOT wake a human. Still deny / do not open the gate.",
-        "url": "https://REPLACE_WITH_WEBHOOK_HOST/tools/escalate_to_oncall",
-        "method": "POST",
-        "speak_during_execution": true,
-        "speak_after_execution": true,
-        "execution_message_description": "Say briefly that you are logging this for management review.",
-        "timeout_ms": 15000,
-        "parameters": {
-          "type": "object",
-          "required": [
-            "community_name",
-            "summary",
-            "urgency"
-          ],
-          "properties": {
-            "community_name": {
-              "type": "string",
-              "description": "HOA / community name"
-            },
-            "visitor_name": {
-              "type": "string",
-              "description": "Visitor name if known"
-            },
-            "host_name_or_address": {
-              "type": "string",
-              "description": "Host name or address if known"
-            },
-            "summary": {
-              "type": "string",
-              "description": "One-sentence situation summary for management review"
-            },
-            "urgency": {
-              "type": "string",
-              "enum": [
-                "low",
-                "normal",
-                "high"
-              ],
-              "description": "How urgently the human should respond"
-            },
-            "visit_type": {
-              "type": "string",
-              "enum": [
-                "guest",
-                "delivery",
-                "vendor",
-                "ops",
-                "other"
-              ]
-            }
-          }
-        },
-        "tool_id": "tool_escalate_to_oncall_welift_inlets"
-      }
-    ],
+    "last_modification_timestamp": 1784228846402,
+    "global_prompt": "## Objective\nYou are the autonomous gate attendant for {{community_name}} (Call Attendant on the LiftMaster / myQ tablet — available whenever this line is routed here).\n\nCurrent time is {{current_time}}\n{{community_name}} defaults to \"The Inlets\" if unset.\n\n## How this gate works\n- Residents enter with a keypad CODE or resident STICKER / transponder — that is not your job.\n- Social guests should use a myQ guest pass or code from the resident when possible.\n- Authorized vendors often receive a time-bound gate code by text — they should use the keypad first.\n- YOU handle exceptions: people without a working code or sticker — especially vendors and workers (gardeners, lawn, pool, pest, contractors, deliveries).\n\n## Rules\n- You alone verify and open or deny. There is NO human sitting this line with you.\n- Never invent approvals. Never give gate codes, PINs, passwords, or resident phone numbers.\n- When unsure: DENY. Never open on a maybe. Never promise a human will come open the gate.\n- Speak clearly, slowly, short answers (1–2 sentences). Ask one question at a time. Repeat back names and company names.\n- Outdoor audio may be noisy or echoey — ask once to repeat if unclear; still unclear → deny.\n- Never say \"let me check with someone\" or \"an attendant is on the way.\"\n- If they say they already have a code/SMS: tell them to try it on the keypad first; only continue verification if it failed.\n\n## Tools\n- check_guest_list: after collecting identity (+ company for vendors). Always before open_gate.\n- open_gate: ONLY after check_guest_list returned approve.\n- escalate_to_oncall: management review log only — does not page a human; still deny unless already approved + opened.\n",
     "nodes": [
       {
-        "id": "start-node-gate-greet",
-        "type": "conversation",
-        "name": "Greetings",
-        "start_speaker": "agent",
-        "display_position": {
-          "x": 500,
-          "y": 332
-        },
         "instruction": {
           "type": "prompt",
           "text": "say \"Thank you for calling the {{community_name}} gate. This is the gate attendant. How can I help you?\""
         },
+        "name": "Greetings",
         "edges": [
           {
             "condition": "If the caller says they are a resident or their code/sticker is not working",
@@ -274,21 +143,28 @@
             },
             "destination_node_id": "node-collect-info"
           }
-        ]
+        ],
+        "start_speaker": "agent",
+        "id": "start-node-gate-greet",
+        "type": "conversation",
+        "display_position": {
+          "x": 500,
+          "y": 332
+        }
       },
       {
-        "id": "node-resident-redirect",
-        "type": "conversation",
-        "name": "Resident Redirect",
-        "display_position": {
-          "x": 1000,
-          "y": 100
-        },
         "instruction": {
           "type": "prompt",
           "text": "Tell them you cannot open the gate for residents via this line. Instruct them to use their keypad CODE or resident STICKER at the reader. If those failed, tell them to contact management during business hours. Do not call open_gate."
         },
+        "name": "Resident Redirect",
         "edges": [],
+        "id": "node-resident-redirect",
+        "type": "conversation",
+        "display_position": {
+          "x": 1000,
+          "y": 100
+        },
         "skip_response_edge": {
           "condition": "Skip response",
           "id": "edge-resident-skip",
@@ -300,18 +176,18 @@
         }
       },
       {
-        "id": "node-emergency",
-        "type": "conversation",
-        "name": "Emergency",
-        "display_position": {
-          "x": 1000,
-          "y": 700
-        },
         "instruction": {
           "type": "prompt",
           "text": "Tell them this is not emergency dispatch. Instruct them to hang up and dial 911. Do not open the gate for a claimed emergency without a verified list match."
         },
+        "name": "Emergency",
         "edges": [],
+        "id": "node-emergency",
+        "type": "conversation",
+        "display_position": {
+          "x": 1000,
+          "y": 700
+        },
         "skip_response_edge": {
           "condition": "Skip response",
           "id": "edge-emergency-skip",
@@ -323,18 +199,18 @@
         }
       },
       {
-        "id": "node-spam-end",
-        "type": "conversation",
-        "name": "Spam",
-        "display_position": {
-          "x": 1000,
-          "y": 900
-        },
         "instruction": {
           "type": "prompt",
           "text": "Politely and quickly end the call. Do not engage with the pitch."
         },
+        "name": "Spam",
         "edges": [],
+        "id": "node-spam-end",
+        "type": "conversation",
+        "display_position": {
+          "x": 1000,
+          "y": 900
+        },
         "skip_response_edge": {
           "condition": "Skip response",
           "id": "edge-spam-skip",
@@ -346,17 +222,7 @@
         }
       },
       {
-        "id": "node-collect-info",
-        "type": "conversation",
         "name": "Collect Visit Info",
-        "display_position": {
-          "x": 1100,
-          "y": 332
-        },
-        "instruction": {
-          "type": "prompt",
-          "text": "Collect what you need before any open. Keep questions short.\n\nFor vendors / workers / gardeners (primary):\n1. Full name of the person at the gate\n2. Company / trade name\n3. Where they are working (unit/address, clubhouse, common areas)\n4. Visit type: vendor (or delivery if carrier)\n5. Whether they already tried a code or guest pass\n\nFor social guests (secondary — prefer myQ pass):\n1. Visitor full name\n2. Resident host name and/or unit/address\n3. Visit type: guest\n\nRepeat back critical names. If they demand \"just open the gate\" without verification, refuse and re-ask for name + company or host."
-        },
         "edges": [
           {
             "condition": "After you have collected visitor name and host/unit or company (for vendors) and visit type",
@@ -376,24 +242,25 @@
             },
             "destination_node_id": "node-deny-access"
           }
-        ]
-      },
-      {
-        "id": "node-check-guest-list",
-        "type": "function",
-        "name": "Check Guest List",
+        ],
+        "id": "node-collect-info",
+        "type": "conversation",
         "display_position": {
-          "x": 1600,
+          "x": 1100,
           "y": 332
         },
+        "instruction": {
+          "type": "prompt",
+          "text": "Collect what you need before any open. Keep questions short. Ask one at a time.\n\nFirst: ask if they already have a keypad code or guest pass (including a texted vendor code). If yes and it should work, tell them to try the keypad first.\n\nFor vendors / workers / gardeners (primary):\n1. Full name of the person at the gate\n2. Company / trade name\n3. Where they are working (unit/address, clubhouse, common areas)\n4. Visit type: vendor (or delivery if carrier)\n5. Whether they already tried a code or guest pass\n\nFor social guests (secondary — prefer myQ pass):\n1. Visitor full name\n2. Resident host name and/or unit/address\n3. Visit type: guest\n\nRepeat back critical names. If they demand \"just open the gate\" without verification, refuse and re-ask for name + company or host."
+        }
+      },
+      {
         "tool_id": "tool_check_guest_list_welift_inlets",
-        "tool_type": "local",
-        "wait_for_result": true,
-        "speak_during_execution": true,
         "instruction": {
           "type": "prompt",
           "text": "Say briefly that you are checking the guest list. Call check_guest_list with community_name={{community_name}}, visitor_name, host_name_or_address, visit_type, and company_name when applicable."
         },
+        "name": "Check Guest List",
         "edges": [
           {
             "condition": "If check_guest_list returns approve or decision approve",
@@ -422,21 +289,30 @@
             },
             "destination_node_id": "node-escalate"
           }
-        ]
+        ],
+        "id": "node-check-guest-list",
+        "type": "function",
+        "display_position": {
+          "x": 1600,
+          "y": 332
+        },
+        "tool_type": "local",
+        "speak_during_execution": true,
+        "wait_for_result": true
       },
       {
-        "id": "node-announce-open",
-        "type": "conversation",
-        "name": "Announce Opening",
-        "display_position": {
-          "x": 2100,
-          "y": 200
-        },
         "instruction": {
           "type": "prompt",
           "text": "Say you are opening the gate now and they should wait for it to move."
         },
+        "name": "Announce Opening",
         "edges": [],
+        "id": "node-announce-open",
+        "type": "conversation",
+        "display_position": {
+          "x": 2100,
+          "y": 200
+        },
         "skip_response_edge": {
           "condition": "Skip response",
           "id": "edge-announce-skip",
@@ -448,21 +324,12 @@
         }
       },
       {
-        "id": "node-open-gate",
-        "type": "function",
-        "name": "Open Gate",
-        "display_position": {
-          "x": 2600,
-          "y": 200
-        },
         "tool_id": "tool_open_gate_welift_inlets",
-        "tool_type": "local",
-        "wait_for_result": true,
-        "speak_during_execution": true,
         "instruction": {
           "type": "prompt",
           "text": "Call open_gate with community_name, visitor_name, host_name_or_address, and a short reason. Only after approve."
         },
+        "name": "Open Gate",
         "edges": [
           {
             "condition": "If open_gate status is opened or success",
@@ -482,21 +349,30 @@
             },
             "destination_node_id": "node-open-failed"
           }
-        ]
+        ],
+        "id": "node-open-gate",
+        "type": "function",
+        "display_position": {
+          "x": 2600,
+          "y": 200
+        },
+        "tool_type": "local",
+        "speak_during_execution": true,
+        "wait_for_result": true
       },
       {
-        "id": "node-confirm-opened",
-        "type": "conversation",
-        "name": "Confirm Opened",
-        "display_position": {
-          "x": 3100,
-          "y": 120
-        },
         "instruction": {
           "type": "prompt",
           "text": "Tell them the gate is opening and to wait for it to move. Stay brief. Then end politely."
         },
+        "name": "Confirm Opened",
         "edges": [],
+        "id": "node-confirm-opened",
+        "type": "conversation",
+        "display_position": {
+          "x": 3100,
+          "y": 120
+        },
         "skip_response_edge": {
           "condition": "Skip response",
           "id": "edge-confirm-skip",
@@ -508,18 +384,18 @@
         }
       },
       {
+        "instruction": {
+          "type": "prompt",
+          "text": "Apologize briefly. Do NOT say a human is coming. Tell them the association or host must authorize entry (vendor list or myQ guest pass) and they can try again later."
+        },
+        "name": "Open Failed",
+        "edges": [],
         "id": "node-open-failed",
         "type": "conversation",
-        "name": "Open Failed",
         "display_position": {
           "x": 3100,
           "y": 320
         },
-        "instruction": {
-          "type": "prompt",
-          "text": "Apologize. Do NOT say a human is coming. Tell them the association or host must authorize entry (vendor list or myQ guest pass) and they can try again later."
-        },
-        "edges": [],
         "skip_response_edge": {
           "condition": "Skip response",
           "id": "edge-failed-skip",
@@ -531,18 +407,18 @@
         }
       },
       {
-        "id": "node-deny-access",
-        "type": "conversation",
-        "name": "Deny Access",
-        "display_position": {
-          "x": 2100,
-          "y": 480
-        },
         "instruction": {
           "type": "prompt",
           "text": "Do NOT open. For vendors: say the authorized vendor list / CAM must add them. For guests: say the host must send a myQ guest pass. Be polite and brief."
         },
+        "name": "Deny Access",
         "edges": [],
+        "id": "node-deny-access",
+        "type": "conversation",
+        "display_position": {
+          "x": 2100,
+          "y": 480
+        },
         "skip_response_edge": {
           "condition": "Skip response",
           "id": "edge-deny-skip",
@@ -554,21 +430,12 @@
         }
       },
       {
-        "id": "node-escalate",
-        "type": "function",
-        "name": "Escalate To Oncall",
-        "display_position": {
-          "x": 2100,
-          "y": 680
-        },
         "tool_id": "tool_escalate_to_oncall_welift_inlets",
-        "tool_type": "local",
-        "wait_for_result": true,
-        "speak_during_execution": true,
         "instruction": {
           "type": "prompt",
           "text": "Call escalate_to_oncall to log for management review. This does NOT wake a human. Still do not open the gate."
         },
+        "name": "Escalate To Oncall",
         "edges": [
           {
             "condition": "After escalate_to_oncall completes",
@@ -579,21 +446,30 @@
             },
             "destination_node_id": "node-escalated-msg"
           }
-        ]
-      },
-      {
-        "id": "node-escalated-msg",
-        "type": "conversation",
-        "name": "Escalated Message",
+        ],
+        "id": "node-escalate",
+        "type": "function",
         "display_position": {
-          "x": 2600,
+          "x": 2100,
           "y": 680
         },
+        "tool_type": "local",
+        "speak_during_execution": true,
+        "wait_for_result": true
+      },
+      {
         "instruction": {
           "type": "prompt",
           "text": "Tell them you cannot open the gate right now. For vendors: authorized list / CAM must add them. For guests: host must send a myQ guest pass. Do not promise a human will come."
         },
+        "name": "Escalated Message",
         "edges": [],
+        "id": "node-escalated-msg",
+        "type": "conversation",
+        "display_position": {
+          "x": 2600,
+          "y": 680
+        },
         "skip_response_edge": {
           "condition": "Skip response",
           "id": "edge-escalated-skip",
@@ -605,9 +481,9 @@
         }
       },
       {
+        "name": "End Call",
         "id": "node-end-main",
         "type": "end",
-        "name": "End Call",
         "display_position": {
           "x": 3600,
           "y": 400
@@ -620,19 +496,196 @@
     ],
     "start_node_id": "start-node-gate-greet",
     "start_speaker": "agent",
+    "tools": [
+      {
+        "tool_id": "tool_check_guest_list_welift_inlets",
+        "method": "POST",
+        "execution_message_description": "Say briefly that you are checking the guest list.",
+        "timeout_ms": 15000,
+        "speak_after_execution": true,
+        "name": "check_guest_list",
+        "description": "Verify a non-resident (especially vendor/worker) against the authorized list. Residents should use keypad/sticker — if visit_type resident, expect deny. Always call before open_gate. Include company_name for vendors.",
+        "type": "custom",
+        "speak_during_execution": true,
+        "parameters": {
+          "type": "object",
+          "required": [
+            "community_name",
+            "visitor_name",
+            "host_name_or_address"
+          ],
+          "properties": {
+            "visit_type": {
+              "type": "string",
+              "description": "guest, delivery, vendor, worker, resident, ops, or other",
+              "enum": [
+                "guest",
+                "delivery",
+                "vendor",
+                "worker",
+                "resident",
+                "ops",
+                "other"
+              ]
+            },
+            "visitor_name": {
+              "type": "string",
+              "description": "Full name of the person at the gate"
+            },
+            "community_name": {
+              "type": "string",
+              "description": "HOA / community name for this gate"
+            },
+            "host_name_or_address": {
+              "type": "string",
+              "description": "Resident full name and/or unit/address they claim to be visiting"
+            },
+            "company_name": {
+              "type": "string",
+              "description": "Vendor/company name (lawn, pool, contractor, etc.)"
+            }
+          }
+        },
+        "url": "https://REPLACE_WITH_WEBHOOK_HOST/tools/check_guest_list"
+      },
+      {
+        "tool_id": "tool_open_gate_welift_inlets",
+        "method": "POST",
+        "execution_message_description": "Say you are opening the gate now and they should wait.",
+        "timeout_ms": 20000,
+        "speak_after_execution": true,
+        "name": "open_gate",
+        "description": "Command autonomous gate unlock via myQ after check_guest_list returned approve. Only call on approve. If status failed, deny and tell visitor to use myQ guest pass — do not mention a human.",
+        "type": "custom",
+        "speak_during_execution": true,
+        "parameters": {
+          "type": "object",
+          "required": [
+            "community_name",
+            "visitor_name",
+            "host_name_or_address",
+            "reason"
+          ],
+          "properties": {
+            "reason": {
+              "type": "string",
+              "description": "Short reason, e.g. guest list match for unit 12"
+            },
+            "entrance": {
+              "type": "string",
+              "description": "Gate / entrance id if known; default main"
+            },
+            "visitor_name": {
+              "type": "string",
+              "description": "Verified visitor full name"
+            },
+            "community_name": {
+              "type": "string",
+              "description": "HOA / community name"
+            },
+            "host_name_or_address": {
+              "type": "string",
+              "description": "Verified host name or address"
+            }
+          }
+        },
+        "url": "https://REPLACE_WITH_WEBHOOK_HOST/tools/open_gate"
+      },
+      {
+        "tool_id": "tool_escalate_to_oncall_welift_inlets",
+        "method": "POST",
+        "execution_message_description": "Say briefly that you are logging this for management review.",
+        "timeout_ms": 15000,
+        "speak_after_execution": true,
+        "name": "escalate_to_oncall",
+        "description": "Log an ambiguous/ops/failed situation for management review. Does NOT wake a human. Still deny / do not open the gate.",
+        "type": "custom",
+        "speak_during_execution": true,
+        "parameters": {
+          "type": "object",
+          "required": [
+            "community_name",
+            "summary",
+            "urgency"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string",
+              "description": "One-sentence situation summary for management review"
+            },
+            "visit_type": {
+              "type": "string",
+              "enum": [
+                "guest",
+                "delivery",
+                "vendor",
+                "ops",
+                "other"
+              ]
+            },
+            "visitor_name": {
+              "type": "string",
+              "description": "Visitor name if known"
+            },
+            "urgency": {
+              "type": "string",
+              "description": "How urgently the human should respond",
+              "enum": [
+                "low",
+                "normal",
+                "high"
+              ]
+            },
+            "community_name": {
+              "type": "string",
+              "description": "HOA / community name"
+            },
+            "host_name_or_address": {
+              "type": "string",
+              "description": "Host name or address if known"
+            }
+          }
+        },
+        "url": "https://REPLACE_WITH_WEBHOOK_HOST/tools/escalate_to_oncall"
+      }
+    ],
     "model_choice": {
       "type": "cascading",
-      "model": "gpt-4.1"
+      "model": "gpt-4.1",
+      "high_priority": false
     },
-    "knowledge_base_ids": [],
+    "model_temperature": 0.2,
+    "tool_call_strict_mode": true,
     "default_dynamic_variables": {
       "community_name": "The Inlets"
+    },
+    "knowledge_base_ids": [],
+    "kb_config": {
+      "top_k": 3,
+      "filter_score": 0.6
     },
     "begin_tag_display_position": {
       "x": 113.5,
       "y": 501
     },
-    "is_published": false
+    "is_published": false,
+    "is_transfer_cf": false
   },
-  "webhook_url": "https://REPLACE_WITH_WEBHOOK_HOST/retell/webhook"
+  "boosted_keywords": [
+    "gate",
+    "guest pass",
+    "myQ",
+    "attendant",
+    "delivery",
+    "vendor",
+    "unit",
+    "Inlets",
+    "keypad",
+    "sticker",
+    "code"
+  ],
+  "end_call_after_silence_ms": 45000,
+  "begin_message_delay_ms": 800,
+  "enable_backchannel": false,
+  "responsiveness": 0.9
 }

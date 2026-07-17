@@ -3,7 +3,7 @@
 Use this after the webhook is reachable on HTTPS (ngrok or deploy).
 
 Dashboard: https://dashboard.retellai.com  
-Configs: [`configs/retell-agent-import.json`](configs/retell-agent-import.json) (preferred Import), [`configs/retell-llm.json`](configs/retell-llm.json), [`configs/retell-agent.json`](configs/retell-agent.json), full prompt in [`prompt.md`](prompt.md).
+Configs: [`configs/retell-agent-import.json`](configs/retell-agent-import.json) (preferred Import — **conversation-flow** shape), base template [`configs/retell-agent-flow.base.json`](configs/retell-agent-flow.base.json), LLM/API configs [`configs/retell-llm.json`](configs/retell-llm.json) + [`configs/retell-agent.json`](configs/retell-agent.json), full prompt notes in [`prompt.md`](prompt.md).
 
 ---
 
