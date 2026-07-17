@@ -33,8 +33,10 @@ def main_test() -> int:
     assert body["status"] == "ok"
     assert body["autonomous"] is True
     assert body["unlock_ready"] is True
+    assert body["version"] == "0.6.0"
     print("health OK", body)
 
+    # Vendors require proof PIN — without it, ask for PIN (do not approve).
     r = client.post(
         "/tools/check_guest_list",
         json={
@@ -49,8 +51,33 @@ def main_test() -> int:
         },
     )
     assert r.status_code == 200, r.text
+    assert r.json()["decision"] == "deny", r.json()
+    assert r.json().get("needs_proof_code") is True
+    print("check_guest_list VENDOR NEEDS_PROOF OK")
+
+    send = client.post(
+        "/access/send_code",
+        json={"company_name": "GreenSide Lawn", "phone": "+19415559876", "override_window": True},
+    )
+    assert send.status_code == 200, send.text
+    code = send.json()["code"]
+    assert len(code) >= 4
+
+    r = client.post(
+        "/tools/check_guest_list",
+        json={
+            "args": {
+                "community_name": "The Inlets",
+                "visitor_name": "Mike Torres",
+                "company_name": "GreenSide Lawn",
+                "host_name_or_address": "common areas",
+                "visit_type": "vendor",
+                "proof_code": code,
+            },
+        },
+    )
     assert r.json()["decision"] == "approve", r.json()
-    print("check_guest_list VENDOR APPROVE OK")
+    print("check_guest_list VENDOR PROOF APPROVE OK")
 
     r = client.post(
         "/tools/check_guest_list",
@@ -61,11 +88,12 @@ def main_test() -> int:
                 "company_name": "GreenSide Lawn",
                 "host_name_or_address": "association",
                 "visit_type": "vendor",
+                "proof_code": "000000",
             }
         },
     )
-    assert r.json()["decision"] == "approve", r.json()
-    print("check_guest_list COMPANY APPROVE OK")
+    assert r.json()["decision"] == "deny", r.json()
+    print("check_guest_list WRONG PIN DENY OK")
 
     r = client.post(
         "/tools/check_guest_list",
@@ -115,6 +143,7 @@ def main_test() -> int:
                 "community_name": "The Inlets",
                 "visitor_name": "Nobody",
                 "host_name_or_address": "Unit 99",
+                "visit_type": "guest",
             }
         },
     )
@@ -209,6 +238,7 @@ def main_test() -> int:
             "args": {
                 "visitor_name": "Test Visitor",
                 "host_name_or_address": "Host Person",
+                "visit_type": "guest",
             }
         },
     )

@@ -1,9 +1,10 @@
-# Retell Dashboard Setup — Overnight Gate Attendant
+# Retell + myQ Call Attendant setup
 
-Use this after the webhook is reachable on HTTPS (ngrok or deploy).
+Use after the webhook is on public HTTPS. Full product checks: [docs/PRODUCT-ACCEPTANCE.md](docs/PRODUCT-ACCEPTANCE.md).  
+Tablet wiring: [docs/MYQ-TABLET-RETELL.md](docs/MYQ-TABLET-RETELL.md).
 
 Dashboard: https://dashboard.retellai.com  
-Configs in this folder: [`configs/retell-llm.json`](configs/retell-llm.json), [`configs/retell-agent.json`](configs/retell-agent.json), full prompt in [`prompt.md`](prompt.md).
+Configs: [`configs/retell-llm.json`](configs/retell-llm.json), [`configs/retell-agent.json`](configs/retell-agent.json), prompt [`prompt.md`](prompt.md).
 
 ---
 
@@ -11,135 +12,77 @@ Configs in this folder: [`configs/retell-llm.json`](configs/retell-llm.json), [`
 
 | Item | Status |
 |------|--------|
-| Retell account + API key | |
-| Webhook running (`uvicorn` in `webhook/`) | |
-| Public HTTPS URL (ngrok) | |
-| `data/guest-list.json` copied from example + tonight’s names | |
-| `ONCALL_PHONE` in `webhook/.env` (your cell, E.164) | |
+| Retell account + API key in `webhook/.env` | |
+| Webhook running (`cd webhook && ./run.sh`) | |
+| Public HTTPS URL | |
+| CAM roster at `/access` (or seed vendors) | |
+| `SIMULATE_MYQ_OPEN=true` until myQ API | |
 | Optional Twilio for real SMS | |
 
 ```bash
 cd webhook
-cp ../data/guest-list.example.json ../data/guest-list.json
-cp .env.example .env   # fill RETELL_API_KEY + ONCALL_PHONE; DEFAULT_COMMUNITY=The Inlets
+cp .env.example .env
 ./run.sh
-# other terminal:
-ngrok http 8080
-# Prefer stable HTTPS before CAM demos — see webhook/DEPLOY.md
+# other terminal: ngrok http 8080   # or deploy — see webhook/DEPLOY.md
 ```
 
 ---
 
-## 1. Create the LLM (Response Engine)
-
-**Option A — script**
+## 1. Create the LLM + agent (one-shot)
 
 ```bash
-# from repo root
 source webhook/.venv/bin/activate
 python scripts/create_agent.py --webhook-base https://YOUR_HOST --community "The Inlets"
 ```
 
-**Option B — dashboard**
+Writes `configs/retell-ids.json` with `llm_id` / `agent_id`. Tools must hit:
 
-1. **Agents → Create** (or Response Engine → Retell LLM)
-2. Paste **begin_message** and **general_prompt** from [`prompt.md`](prompt.md)
-3. Set temperature ~**0.2** (strict verifier)
-4. Add tools (see §2)
-5. Set dynamic variable `community_name` = `The Inlets`
+- `POST …/tools/check_guest_list` (vendors require `proof_code`)
+- `POST …/tools/open_gate`
+- `POST …/tools/escalate_to_oncall`
 
 ---
 
-## 2. Custom functions (critical)
+## 2. Phone number
 
-Replace `YOUR_WEBHOOK_HOST` with your ngrok/deploy host.
-
-| Name | Method | URL | Speak during | Speak after |
-|------|--------|-----|--------------|-------------|
-| `check_guest_list` | POST | `https://…/tools/check_guest_list` | on | on |
-| `open_gate` | POST | `https://…/tools/open_gate` | on | on |
-| `escalate_to_oncall` | POST | `https://…/tools/escalate_to_oncall` | on | on |
-| `end_call` | built-in | — | — | — |
-
-Parameter schemas: copy from [`configs/retell-llm.json`](configs/retell-llm.json) → each tool’s `parameters` object.
-
-**Payload:** leave **args only** OFF (default wrapped `{ name, call, args }` — webhook supports both).
+1. Retell → **Phone Numbers** → buy/assign to this agent  
+2. Set `RETELL_DID=+1…` in `webhook/.env` (shown on `/gate`)  
+3. Cell-test before pointing myQ at it  
 
 ---
 
-## 3. Voice agent settings
+## 3. Acceptance (cell)
 
-From [`configs/retell-agent.json`](configs/retell-agent.json):
-
-- Voice: calm adult English (e.g. `11labs-Adrian` or similar; swap if pedestal audio needs slower)
-- Language: `en-US`
-- Interruption sensitivity: moderate (outdoor wind / road noise)
-- Boosted keywords: gate, guest pass, myQ, attendant, delivery, vendor, unit
-- Agent webhook (optional): `https://…/retell/webhook`
-- Post-call fields: `visitor_name`, `host_name_or_address`, `result`, `open_requested`
+1. CAM sends code from `/access` for GreenSide (or your test vendor)  
+2. Call DID → company + **correct PIN** → approve → open (simulate)  
+3. Wrong PIN → deny  
+4. Resident → redirect, no open  
 
 ---
 
-## 4. Phone number
+## 4. Wire myQ tablet (only after §3 passes)
 
-1. Retell → **Phone Numbers** → buy or import a US DID  
-2. Assign to this agent  
-3. Test from your cell **before** pointing myQ at it  
+Point overnight Call Attendant / quick-call at the **Retell DID**.  
+Details: [docs/MYQ-TABLET-RETELL.md](docs/MYQ-TABLET-RETELL.md).
 
----
-
-## 5. Test script (simulate visitor)
-
-Call the Retell number. Walk three paths (`SIMULATE_MYQ_OPEN=true` until myQ API is live):
-
-1. **Approve** — name from `guest-list.json` (e.g. Jordan Lee / Sam Rivera)  
-   - Expect: check → open → `status: opened` (simulate or myQ)  
-2. **Deny** — random visitor + host not on list  
-   - Expect: deny script; no open  
-3. **Ambiguous / ops** — mumble or visit_type ops  
-   - Expect: deny + log; agent must **not** say a human is coming  
-
-Confirm events log grows with each tool call.
+Controlled pedestal test with dealer/CAM. Live barrier motion needs real `MYQ_*`.
 
 ---
 
-## 6. Wire myQ tablet (only after §5 passes)
-
-Same pattern as Smith ([how-to-connect-myq-to-smith.md](../01-metro-validation/how-to-connect-myq-to-smith.md)):
-
-> Point overnight Call Attendant / quick-call at the **Retell DID**, 8pm–6am.
-
-Do a controlled 10-minute pedestal test with the dealer/CAM present. Live opens require real `MYQ_*` (not simulate).
-
----
-
-## 7. Autonomous unlock SOP
-
-When a visitor is approved overnight:
-
-1. Retell calls `open_gate` → myQ Partner API unlocks  
-2. Visitor waits for barrier motion  
-3. Failures fail closed — deny + daytime log review (no 2am SMS)
-
----
-
-## 8. Common mistakes
+## 5. Common mistakes
 
 | Mistake | Fix |
 |---------|-----|
-| Tool URL still `YOUR_WEBHOOK_HOST` | Update all three custom function URLs |
-| No `guest-list.json` | Copy example; agent will deny |
-| Signature 401s | Use webhook API key; or `VERIFY_RETELL_SIGNATURES=false` for local curl only |
-| Agent opens without check | Prompt: open_gate only after approve — temperature ~0.2 |
-| Forward myQ before Retell test | Never — finish §5 first |
-| Expect human SMS | Product is autonomous — configure `MYQ_*` instead |
-| Live traffic with only simulate | Turn `SIMULATE_MYQ_OPEN=false` after API works |
+| Tool URL still placeholder | Re-run `create_agent.py` with current host |
+| Opens without PIN | Prompt/tools must require `proof_code` for vendors |
+| Forward myQ before cell test | Never |
+| Expect human SMS wake | Autonomous product — configure myQ unlock |
 
 ---
 
-## Message to yourself on first live night
+## First live night
 
-- [ ] Guest list loaded for tonight  
-- [ ] Webhook deploy up; `AUTONOMOUS=true`; real `MYQ_*`  
-- [ ] Health shows `unlock_ready: true` and `simulate_myq_open: false`  
-- [ ] One intentional test call from the physical tablet  
+- [ ] Vendors on CAM desk; codes sent  
+- [ ] Webhook up; `AUTONOMOUS=true`  
+- [ ] Health: `unlock_ready` true  
+- [ ] One intentional call from the physical tablet  

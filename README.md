@@ -20,22 +20,28 @@ Full thesis: **[docs/PRODUCT.md](docs/PRODUCT.md)** · Security: **[docs/GATE-SE
 
 | Path | Purpose |
 |------|---------|
-| [webhook/](webhook/) | Verify → myQ unlock (autonomous) |
+| [webhook/](webhook/) | CAM Access Desk + credentials + Retell tools + myQ unlock |
+| [webhook/static/access.html](webhook/static/access.html) | **CAM admin** desk (`/access`) |
+| [webhook/static/gate.html](webhook/static/gate.html) | Call Attendant visitor surface (`/gate`) |
+| [data/vendors.seed.json](data/vendors.seed.json) | Seed roster (persists to `vendors.json`) |
 | [configs/](configs/) | Retell LLM + agent JSON |
-| [prompt.md](prompt.md) | Vendor-first autonomous prompt |
-| [data/guest-list.example.json](data/guest-list.example.json) | Vendor-first authorized list sample |
-| [scripts/create_agent.py](scripts/create_agent.py) | Push configs to Retell API |
-| [setup-checklist.md](setup-checklist.md) | Retell + myQ wiring |
+| [prompt.md](prompt.md) | Vendor proof-PIN autonomous prompt |
+| [docs/PRODUCT-ACCEPTANCE.md](docs/PRODUCT-ACCEPTANCE.md) | Product pass/fail checks |
+| [docs/MYQ-TABLET-RETELL.md](docs/MYQ-TABLET-RETELL.md) | Tablet Call Attendant → Retell DID |
+| [docs/GATE-CODE-RUNBOOK.md](docs/GATE-CODE-RUNBOOK.md) | PIN → physical barrier |
+| [scripts/create_agent.py](scripts/create_agent.py) | One-shot Retell agent push |
 | [webhook/DEPLOY.md](webhook/DEPLOY.md) | Stable HTTPS deploy |
 
 ### Quick start
 
-1. `cp webhook/.env.example webhook/.env` — `AUTONOMOUS=true`. Demos: `SIMULATE_MYQ_OPEN=true`. Live: set `MYQ_*`.
-2. `cd webhook && ./run.sh` (or deploy).
-3. Create Retell agent from [setup-checklist.md](setup-checklist.md) / [prompt.md](prompt.md).
-4. Point myQ Call Attendant at the Retell DID only after approve/deny/open tests pass.
+1. `cp webhook/.env.example webhook/.env` — `TWILIO_*`, `SIMULATE_MYQ_OPEN=true`, later `RETELL_DID`.
+2. `cd webhook && ./run.sh` → **http://127.0.0.1:8080/access** (CAM) and **/gate** (Call Attendant UX).
+3. Add vendors (owner or dispatch phone) → Send code → revoke/audit.
+4. `python scripts/create_agent.py --webhook-base https://HOST` then point myQ Call Attendant at the Retell DID ([docs/MYQ-TABLET-RETELL.md](docs/MYQ-TABLET-RETELL.md)).
 
-**Critical path:** [myQ Partner API](docs/pilot-the-inlets/myq-api-path.md).  
+**Thesis:** [docs/PRODUCT.md](docs/PRODUCT.md) · **Who gets the SMS:** [docs/VENDOR-CONTACTS.md](docs/VENDOR-CONTACTS.md)
+
+**Critical path for metal:** [myQ Partner API](docs/pilot-the-inlets/myq-api-path.md)
 
 **This week:** [docs/pilot-the-inlets/THIS-WEEK.md](docs/pilot-the-inlets/THIS-WEEK.md)
 

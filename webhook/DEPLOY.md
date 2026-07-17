@@ -1,22 +1,25 @@
-# Deploy the Retell webhook (stable HTTPS)
+# Deploy Access Desk + Retell webhook (stable HTTPS)
 
-Local ngrok is fine for first wiring. **Before any CAM demo or myQ forward**, put this service on a stable host so Retell tool URLs do not change daily.
+Local ngrok is fine for first wiring. **Before any CAM demo**, put this service on a stable host so `/access` and Retell tool URLs do not change mid-meeting.
+
+Sales script: [docs/SALES-DEMO.md](../docs/SALES-DEMO.md)
 
 ## Env vars (all hosts)
 
-Copy [`.env.example`](.env.example). Minimum for Phase 1:
+Copy [`.env.example`](.env.example). Minimum for the real product:
 
 | Var | Value |
 |-----|-------|
-| `RETELL_API_KEY` | Retell key (signature verify) |
+| `TWILIO_*` | SMS to owner/dispatch phones |
+| `RETELL_API_KEY` | Agent push + signature verify |
+| `RETELL_DID` | Shown on `/gate`; tablet Call Attendant target |
 | `DEFAULT_COMMUNITY` | `The Inlets` |
 | `AUTONOMOUS` | `true` |
 | `HUMAN_SMS_FALLBACK` | `false` |
 | `VERIFY_RETELL_SIGNATURES` | `true` in prod |
-| `MYQ_*` | Required for live autonomous opens |
-| `SIMULATE_MYQ_OPEN` | `true` for demos only |
+| `MYQ_*` | Live autonomous opens |
+| `SIMULATE_MYQ_OPEN` | `true` until Partner API |
 | `SERVERLESS` | `true` if filesystem is ephemeral |
-| `GUEST_LIST_JSON` | Full guest-list JSON string when you cannot mount a file |
 
 ## Option A — Railway (fastest)
 
@@ -54,15 +57,16 @@ Put a reverse proxy / load balancer with HTTPS in front.
 
 ## After deploy
 
-1. Open `https://YOUR_HOST/health` — expect `"autonomous":true`, `"unlock_ready":true`.
-2. Update Retell custom function URLs to `https://YOUR_HOST/tools/...`.
-3. Re-run §5 cell tests from [setup-checklist.md](../setup-checklist.md).
-4. Record three demos (approve / deny / fail-closed) before CAM outreach.
+1. `https://YOUR_HOST/health` — `autonomous`, Twilio flags as expected.
+2. `https://YOUR_HOST/access` — add vendor, send code.
+3. `https://YOUR_HOST/gate` — Call Attendant UX; set `RETELL_DID`.
+4. `python scripts/create_agent.py --webhook-base https://YOUR_HOST`
+5. Run [PRODUCT-ACCEPTANCE.md](../docs/PRODUCT-ACCEPTANCE.md); wire tablet per [MYQ-TABLET-RETELL.md](../docs/MYQ-TABLET-RETELL.md).
 
-## Local still works
+## Local
 
 ```bash
 cd webhook
 ./run.sh
-# other terminal: ngrok http 8080
+# http://127.0.0.1:8080/access  and  /gate
 ```

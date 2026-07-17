@@ -1,0 +1,31 @@
+{
+  "community_name": "The Inlets",
+  "timezone": "America/New_York",
+  "notes": "Seed vendors for Access Desk MVP. CAM authorizes companies; codes SMS to access contact or tech phone.",
+  "vendors": [
+    {
+      "company_name": "GreenSide Lawn",
+      "access_contact_type": "dispatch",
+      "access_phone": "+19415550100",
+      "invite_email": "gates@greenside.example",
+      "window": "Mon-Fri 07:00-18:00",
+      "notes": "Standing landscaping — demo vendor"
+    },
+    {
+      "company_name": "AquaClear Pools",
+      "access_contact_type": "owner",
+      "access_phone": "+19415550101",
+      "invite_email": "owner@aquaclear.example",
+      "window": "Tue-Thu 08:00-16:00",
+      "notes": "Pool service"
+    },
+    {
+      "company_name": "Bayshore Plumbing",
+      "access_contact_type": "dispatch",
+      "access_phone": "+19415550102",
+      "invite_email": "dispatch@bayshore.example",
+      "window": "as-needed",
+      "notes": "One-off / emergency plumbing"
+    }
+  ]
+}
