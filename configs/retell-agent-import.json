@@ -15,7 +15,7 @@
   "version": 0,
   "assigned_tags": [],
   "is_published": false,
-  "version_title": "testing",
+  "version_title": "company-phone-keypad + any-hour",
   "post_call_analysis_model": "gpt-4.1",
   "pii_config": {
     "mode": "post_call",
