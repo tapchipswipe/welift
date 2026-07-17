@@ -173,6 +173,7 @@ AI is a **feature of the desk**, not the meter you want spinning.
 | [GATE-SECURITY.md](GATE-SECURITY.md) | Proof, PIN/code, anti-spoof |
 | [VENDOR-CONTACTS.md](VENDOR-CONTACTS.md) | SMB owner vs big-company dispatch — who gets the SMS |
 | [VENDOR-PORTAL.md](VENDOR-PORTAL.md) | How dispatch assigns today’s tech and sends the code |
+| [VENDOR-PORTAL-ROADMAP.md](VENDOR-PORTAL-ROADMAP.md) | Complete step-by-step build breakdown (Phase 0→8) |
 | [decision-log.md](pilot-the-inlets/decision-log.md) | Locked Q&A |
 | [prompt.md](../prompt.md) | AI fallback script |
 | [THIS-WEEK.md](pilot-the-inlets/THIS-WEEK.md) | Execution |
