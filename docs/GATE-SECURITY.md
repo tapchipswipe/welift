@@ -13,14 +13,16 @@ CAM approves companies + one access contact each (owner or dispatch)
   → We Lift auto-SMS time-bound gate codes to that contact
   → SMB: owner uses code / Big firm: dispatch forwards to today's tech
   → Keypad entry (no AI cost)
-  → AI Call Attendant only if no/lost code + proof required
+  → Planned (big vendors): type company/dispatch phone digits on keypad in-window
+  → AI Call Attendant only if no/lost code + phone PIN failed + proof required
 ```
 
-**Who gets the SMS?** Not “whoever might drive up.” See [VENDOR-CONTACTS.md](VENDOR-CONTACTS.md).
+**Who gets the SMS?** Not “whoever might drive up.” See [VENDOR-CONTACTS.md](VENDOR-CONTACTS.md) (Models A–D).
 
 Twilio = **credential delivery** to the company access contact.  
+Company phone PIN = **second keypad happy path** for multi-crew vendors (roster phone = digits).  
 Retell = **rare fallback**.  
-myQ API = mint guest pass / temp code + remote unlock for AI path.
+myQ API = mint guest pass / temp code / phone-digit credential + remote unlock for AI path.
 
 ---
 
@@ -29,7 +31,7 @@ myQ API = mint guest pass / temp code + remote unlock for AI path.
 | Layer | Question | How We Lift answers |
 |-------|----------|---------------------|
 | **Authorization** | Is this vendor allowed? | CAM roster |
-| **Authentication (happy path)** | Is this the real vendor crew? | Code sent to **registered phone** |
+| **Authentication (happy path)** | Is this the real vendor crew? | Code sent to **registered phone**, and/or **company phone digits** on keypad (Model D) |
 | **Authentication (AI fallback)** | Same, without keypad | Visit PIN / WO# + list match — never name alone |
 | **Context** | Allowed now / here? | Schedule window + address |
 

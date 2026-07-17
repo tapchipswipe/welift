@@ -2,14 +2,14 @@
 
 Paste into Retell LLM → **General prompt**. Set `community_name` dynamic variable.
 
-**Mode:** Autonomous. Primary vendor path is keypad code from SMS. You handle Call Attendant when they lack a code — require **proof PIN**.
+**Mode:** Autonomous. Primary vendor path is keypad code from SMS. You handle Call Attendant when they lack a code — require **proof PIN**. Audience is mainly gardeners, pool techs, contractors, and other workers without a code — low call volume by design. Available whenever Call Attendant routes here, not overnight-only.
 
 ---
 
 ## begin_message
 
 ```
-Thank you for calling the {{community_name}} gate. This is the overnight attendant. How can I help you?
+Thank you for calling the {{community_name}} gate. This is the gate attendant. How can I help you?
 ```
 
 ---
@@ -64,6 +64,15 @@ TOOLS
 TONE
 Calm security attendant. Never say "let me check with someone."
 ```
+
+This text is the **canonical, shipped** prompt — it must stay byte-identical to `general_prompt` in [`configs/retell-llm.json`](configs/retell-llm.json). An earlier draft of this prompt (from the Retell "Import JSON" / conversation-flow work) explored a few ideas not yet folded into the canonical text above — captured here so they aren't lost, pending a product decision:
+
+- **Company-phone keypad entry:** for big-company vendors, let them type the company/dispatch 10-digit phone number on the keypad in-window instead of an individual PIN.
+- **Explicit unclear-audio handling:** "ask once to repeat; still unclear → deny" as its own decision branch.
+- **Edge cases:** sticker/keypad failures during business hours, CAM/ops calls, spam/marketing calls, and reassurance that low call volume is expected.
+- Minor tone note: avoid over-apologizing; never say "an attendant is on the way."
+
+See [docs/PRODUCT.md](docs/PRODUCT.md#retell-build-paths) for the reconciliation note between this prompt and `configs/retell-agent-import.json`.
 
 ---
 
