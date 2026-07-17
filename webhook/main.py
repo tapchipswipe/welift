@@ -285,7 +285,7 @@ def _try_myq_unlock(entrance: str) -> dict[str, Any] | None:
 def _deny_message(detail: str) -> str:
     return (
         f"{detail} Do not open. Tell the visitor the host must add a myQ guest pass, "
-        "then they may try again or call back. No human attendant is available overnight."
+        "then they may try again or call back. No human attendant is available on this line."
     )
 
 
@@ -663,8 +663,8 @@ async def escalate_to_oncall(
             "decision": "deny",
             "message": (
                 "Logged for daytime review. Do not open. Do not say a human is on the "
-                "way. Tell the visitor you cannot verify the visit overnight and the "
-                "host must add a myQ guest pass."
+                "way. Tell the visitor you cannot verify the visit right now and the "
+                "host must add a myQ guest pass (or authorized vendor list)."
             ),
             "log": log_entry,
         }
