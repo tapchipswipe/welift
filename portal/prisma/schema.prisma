@@ -1,0 +1,83 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:../../data/welift.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Community {
+  id       Int    @id @default(autoincrement())
+  name     String @unique
+  timezone String @default("America/New_York")
+
+  @@map("communities")
+}
+
+model VendorCompany {
+  id                  Int     @id @default(autoincrement())
+  community_name      String  @default("The Inlets") @map("community_name")
+  company_name        String  @unique @map("company_name")
+  access_contact_type String  @default("dispatch") @map("access_contact_type")
+  access_phone        String? @map("access_phone")
+  invite_email        String? @map("invite_email")
+  window              String  @default("Mon-Fri 07:00-18:00")
+  notes               String?
+  active              Boolean @default(true)
+
+  @@map("vendor_companies")
+}
+
+model GuestEntry {
+  id             Int       @id @default(autoincrement())
+  community_name String    @default("The Inlets") @map("community_name")
+  visitor_name   String    @map("visitor_name")
+  company_name   String?   @map("company_name")
+  host_name      String?   @map("host_name")
+  host_address   String?   @map("host_address")
+  valid_until    DateTime? @map("valid_until")
+  notes          String?
+
+  @@map("guest_entries")
+}
+
+model Credential {
+  id           String   @id
+  community    String   @default("The Inlets")
+  company_name String   @map("company_name")
+  company_key  String?  @map("company_key")
+  last4        String
+  code_hash    String   @map("code_hash")
+  status       String   @default("active")
+  created_at   DateTime @default(now()) @map("created_at")
+  valid_until  DateTime @map("valid_until")
+  created_by   String   @default("cam_desk") @map("created_by")
+
+  @@map("credentials")
+}
+
+model Delivery {
+  id              String   @id
+  credential_id   String   @map("credential_id")
+  community       String
+  company_name    String   @map("company_name")
+  to_masked       String   @map("to_masked")
+  channel         String
+  status          String
+  actor           String
+  ts              DateTime @default(now())
+  last4           String
+  window_override Boolean  @default(false) @map("window_override")
+
+  @@map("deliveries")
+}
+
+model AuditEvent {
+  id        Int      @id @default(autoincrement())
+  timestamp DateTime @default(now())
+  tool      String
+  payload   String? // Store as String to be safe and compatible with SQLite JSON storage
+
+  @@map("audit_events")
+}
