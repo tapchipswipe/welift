@@ -67,3 +67,7 @@ Playbooks: [docs/pilot-the-inlets/](docs/pilot-the-inlets/) · Locked decisions:
 | [mockups/](mockups/) | myQ tablet HTML mockups |
 
 Historical Smith.ai docs are archive/comparison only. Production voice is Retell-only.
+
+## Onboarding an AI agent / indexer
+
+New to this repo? [docs/PROJECT-INDEX-PROMPT.md](docs/PROJECT-INDEX-PROMPT.md) is a copy-paste-ready prompt for Antigravity or any other agentic platform to fully understand and index the project.
