@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>We Lift — CAM Access Desk</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0e1512;
+      --panel: #17201b;
+      --ink: #e7f0ea;
+      --muted: #8fa399;
+      --accent: #3d9a6a;
+      --accent-dim: #2d7350;
+      --line: #2a3a32;
+      --warn: #c4a35a;
+      --danger: #c45c5c;
+      --font: "DM Sans", system-ui, sans-serif;
+      --display: "Instrument Serif", Georgia, serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse 70% 45% at 0% 0%, #1a3d2e 0%, transparent 55%),
+        radial-gradient(ellipse 50% 40% at 100% 10%, #1a2a28 0%, transparent 50%),
+        var(--bg);
+    }
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 1.25rem 1.5rem 0.5rem;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .brand {
+      font-size: 0.72rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+    h1 {
+      font-family: var(--display);
+      font-weight: 400;
+      font-size: 2rem;
+      margin: 0.2rem 0 0;
+    }
+    .badge {
+      font-size: 0.75rem;
+      color: var(--warn);
+      border: 1px solid var(--line);
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+    }
+    .sub {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 1.5rem 1rem;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    .sub a { color: var(--accent); }
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 1.5rem 3rem;
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 1.25rem;
+    }
+    @media (max-width: 860px) {
+      main { grid-template-columns: 1fr; }
+    }
+    section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 1.1rem 1.15rem 1.25rem;
+    }
+    section h2 {
+      margin: 0 0 0.85rem;
+      font-size: 0.8rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    label {
+      display: block;
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin: 0.65rem 0 0.3rem;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 0.65rem 0.7rem;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: var(--bg);
+      color: var(--ink);
+      font: inherit;
+      font-size: 0.95rem;
+    }
+    .row2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.65rem;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+    button {
+      appearance: none;
+      border: none;
+      border-radius: 9px;
+      padding: 0.7rem 0.95rem;
+      font: inherit;
+      font-weight: 600;
+      font-size: 0.92rem;
+      cursor: pointer;
+      background: var(--accent);
+      color: #fff;
+    }
+    button:hover { background: var(--accent-dim); }
+    button.secondary {
+      background: transparent;
+      border: 1px solid var(--line);
+      color: var(--ink);
+    }
+    button.danger {
+      background: transparent;
+      border: 1px solid var(--danger);
+      color: var(--danger);
+    }
+    button:disabled { opacity: 0.5; cursor: wait; }
+    .msg {
+      margin-top: 0.75rem;
+      padding: 0.75rem;
+      border-radius: 8px;
+      background: var(--bg);
+      border: 1px solid var(--line);
+      font-size: 0.88rem;
+      display: none;
+      line-height: 1.45;
+    }
+    .msg.show { display: block; }
+    .msg.ok { border-color: var(--accent); }
+    .msg.err { border-color: var(--danger); }
+    .code {
+      font-size: 1.5rem;
+      letter-spacing: 0.18em;
+      font-weight: 700;
+      color: var(--accent);
+      margin: 0.35rem 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.55rem 0.35rem;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    th { color: var(--muted); font-weight: 500; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .pill {
+      display: inline-block;
+      font-size: 0.7rem;
+      padding: 0.15rem 0.45rem;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+    }
+    .pill.dispatch { color: #7eb8ff; border-color: #2a4060; }
+    .pill.owner { color: #9ed4b0; border-color: #2a4a38; }
+    .pill.off { color: var(--danger); }
+    .vendor-actions { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.35rem; }
+    .vendor-actions button { padding: 0.35rem 0.55rem; font-size: 0.75rem; }
+    .hint { font-size: 0.8rem; color: var(--warn); margin-top: 0.5rem; }
+    .log-item { padding: 0.45rem 0; border-bottom: 1px solid var(--line); font-size: 0.82rem; color: var(--muted); }
+    .log-item strong { color: var(--ink); }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <div class="brand">We Lift</div>
+      <h1 id="title">CAM Access Desk</h1>
+    </div>
+    <div class="badge">Admin / CAM only</div>
+  </header>
+  <p class="sub">
+    Authorize vendors, text time-bound gate codes to owner or dispatch phones (saves AI minutes).
+    Call Attendant fallback: <a href="/gate">/gate</a> · Health: <a href="/health">/health</a>
+  </p>
+
+  <main>
+    <div>
+      <section>
+        <h2>Vendor roster</h2>
+        <div id="roster"></div>
+      </section>
+
+      <section style="margin-top:1.25rem">
+        <h2>Add / update vendor</h2>
+        <div class="row2">
+          <div>
+            <label for="v-company">Company name</label>
+            <input id="v-company" placeholder="GreenSide Lawn" />
+          </div>
+          <div>
+            <label for="v-type">Access contact</label>
+            <select id="v-type">
+              <option value="dispatch">Dispatch (big company)</option>
+              <option value="owner">Owner (SMB)</option>
+            </select>
+          </div>
+        </div>
+        <div class="row2">
+          <div>
+            <label for="v-phone">Access phone</label>
+            <input id="v-phone" type="tel" placeholder="+19415551234" />
+          </div>
+          <div>
+            <label for="v-window">Window</label>
+            <input id="v-window" placeholder="Mon-Fri 07:00-18:00" value="Mon-Fri 07:00-18:00" />
+          </div>
+        </div>
+        <label for="v-notes">Notes</label>
+        <input id="v-notes" placeholder="Standing landscaping" />
+        <div class="actions">
+          <button type="button" id="btn-save">Save vendor</button>
+          <button type="button" class="secondary" id="btn-clear">Clear form</button>
+        </div>
+        <div class="msg" id="vendor-msg"></div>
+      </section>
+    </div>
+
+    <div>
+      <section>
+        <h2>Send today’s gate code</h2>
+        <label for="s-company">Vendor</label>
+        <select id="s-company"></select>
+        <label for="s-phone">Phone override (optional — blank = roster phone)</label>
+        <input id="s-phone" type="tel" placeholder="Leave blank to use roster number" />
+        <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.75rem">
+          <input type="checkbox" id="s-override" style="width:auto" />
+          Override window (CAM emergency)
+        </label>
+        <p class="hint" id="twilio-hint" hidden>Twilio not configured — code still mints; SMS logged server-side only.</p>
+        <div class="actions">
+          <button type="button" id="btn-send">Send code</button>
+          <button type="button" class="danger" id="btn-revoke">Revoke active code</button>
+        </div>
+        <div class="msg" id="send-msg"></div>
+      </section>
+
+      <section style="margin-top:1.25rem">
+        <h2>Audit</h2>
+        <div id="audit"></div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    let meta = { vendors: [], community_name: "The Inlets" };
+
+    function show(el, text, ok) {
+      el.className = "msg show " + (ok ? "ok" : "err");
+      el.innerHTML = text;
+    }
+
+    async function loadAll() {
+      const [m, a] = await Promise.all([
+        fetch("/access/meta").then((r) => r.json()),
+        fetch("/access/audit").then((r) => r.json()),
+      ]);
+      meta = m;
+      document.getElementById("title").textContent =
+        (m.community_name || "Community") + " — CAM Access Desk";
+      document.getElementById("twilio-hint").hidden = !!m.twilio_configured;
+      renderRoster(m.vendors || []);
+      fillSendSelect(m.vendors || []);
+      renderAudit(a);
+    }
+
+    function renderRoster(vendors) {
+      const el = document.getElementById("roster");
+      if (!vendors.length) {
+        el.innerHTML = "<p class='hint'>No vendors yet — add one below.</p>";
+        return;
+      }
+      el.innerHTML =
+        "<table><thead><tr><th>Company</th><th>Contact</th><th>Window</th></tr></thead><tbody>" +
+        vendors
+          .map((v) => {
+            const off = v.active === false;
+            return `<tr>
+              <td>
+                <strong>${esc(v.company_name)}</strong>
+                ${off ? " <span class='pill off'>inactive</span>" : ""}
+                <div class="vendor-actions">
+                  <button type="button" class="secondary" data-edit="${esc(v.company_name)}">Edit</button>
+                  <button type="button" class="secondary" data-send="${esc(v.company_name)}">Send</button>
+                  <button type="button" class="danger" data-toggle="${esc(v.company_name)}" data-active="${off ? "1" : "0"}">${off ? "Reactivate" : "Deactivate"}</button>
+                </div>
+              </td>
+              <td>
+                <span class="pill ${v.access_contact_type || ""}">${esc(v.access_contact_type || "?")}</span><br/>
+                ${esc(v.access_phone || "")}
+              </td>
+              <td>${esc(v.window || "")}<br/><span style="color:var(--muted)">${esc(v.notes || "")}</span></td>
+            </tr>`;
+          })
+          .join("") +
+        "</tbody></table>";
+
+      el.querySelectorAll("[data-edit]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const v = vendors.find((x) => x.company_name === btn.dataset.edit);
+          if (!v) return;
+          document.getElementById("v-company").value = v.company_name || "";
+          document.getElementById("v-type").value = v.access_contact_type || "owner";
+          document.getElementById("v-phone").value = v.access_phone || "";
+          document.getElementById("v-window").value = v.window || "";
+          document.getElementById("v-notes").value = v.notes || "";
+        });
+      });
+      el.querySelectorAll("[data-send]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document.getElementById("s-company").value = btn.dataset.send;
+          document.getElementById("s-phone").value = "";
+        });
+      });
+      el.querySelectorAll("[data-toggle]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const active = btn.dataset.active === "1";
+          await fetch("/access/vendors/" + encodeURIComponent(btn.dataset.toggle), {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ active }),
+          });
+          await loadAll();
+        });
+      });
+    }
+
+    function fillSendSelect(vendors) {
+      const sel = document.getElementById("s-company");
+      const active = vendors.filter((v) => v.active !== false);
+      sel.innerHTML = active
+        .map(
+          (v) =>
+            `<option value="${esc(v.company_name)}">${esc(v.company_name)} · ${esc(
+              v.access_contact_type || ""
+            )}</option>`
+        )
+        .join("");
+    }
+
+    function renderAudit(a) {
+      const el = document.getElementById("audit");
+      const deliveries = a.deliveries || [];
+      const creds = a.active_credentials || [];
+      let html = "<strong style='color:var(--ink);font-size:0.85rem'>Active codes</strong>";
+      if (!creds.length) html += "<div class='log-item'>None</div>";
+      else
+        creds.forEach((c) => {
+          html += `<div class="log-item"><strong>${esc(c.company_name)}</strong> ···${esc(
+            c.last4 || ""
+          )} until ${esc((c.valid_until || "").slice(0, 16))}</div>`;
+        });
+      html += "<strong style='color:var(--ink);font-size:0.85rem;display:block;margin-top:0.75rem'>Recent sends</strong>";
+      if (!deliveries.length) html += "<div class='log-item'>None yet</div>";
+      else
+        deliveries.slice(0, 12).forEach((d) => {
+          html += `<div class="log-item"><strong>${esc(d.company_name)}</strong> ···${esc(
+            d.last4 || ""
+          )} → ${esc(d.to_masked || "")} · ${esc(d.status || "")} · ${esc(
+            (d.ts || "").slice(11, 19)
+          )}Z</div>`;
+        });
+      el.innerHTML = html;
+    }
+
+    function esc(s) {
+      return String(s || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    document.getElementById("btn-save").addEventListener("click", async () => {
+      const msg = document.getElementById("vendor-msg");
+      try {
+        const res = await fetch("/access/vendors", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            company_name: document.getElementById("v-company").value,
+            access_contact_type: document.getElementById("v-type").value,
+            access_phone: document.getElementById("v-phone").value,
+            window: document.getElementById("v-window").value,
+            notes: document.getElementById("v-notes").value,
+            active: true,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Save failed");
+        show(msg, "Saved " + data.vendor.company_name, true);
+        await loadAll();
+      } catch (e) {
+        show(msg, String(e.message || e), false);
+      }
+    });
+
+    document.getElementById("btn-clear").addEventListener("click", () => {
+      ["v-company", "v-phone", "v-notes"].forEach((id) => (document.getElementById(id).value = ""));
+      document.getElementById("v-window").value = "Mon-Fri 07:00-18:00";
+      document.getElementById("v-type").value = "dispatch";
+    });
+
+    document.getElementById("btn-send").addEventListener("click", async () => {
+      const msg = document.getElementById("send-msg");
+      const btn = document.getElementById("btn-send");
+      btn.disabled = true;
+      try {
+        const phone = document.getElementById("s-phone").value.trim();
+        const body = {
+          company_name: document.getElementById("s-company").value,
+          override_window: document.getElementById("s-override").checked,
+        };
+        if (phone) body.phone = phone;
+        const res = await fetch("/access/send_code", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Send failed");
+        show(
+          msg,
+          `<div>Sent to ${data.sms?.to_masked || "phone"}</div>
+           <div class="code">${data.code}</div>
+           <div>Valid until ${data.valid_until}. SMS: ${data.sms?.status} (${data.sms?.channel})</div>`,
+          true
+        );
+        await loadAll();
+      } catch (e) {
+        show(msg, String(e.message || e), false);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById("btn-revoke").addEventListener("click", async () => {
+      const msg = document.getElementById("send-msg");
+      const company = document.getElementById("s-company").value;
+      const res = await fetch("/access/revoke", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ company_name: company }),
+      });
+      const data = await res.json();
+      show(msg, `Revoked ${data.revoked} active code(s) for ${company}`, true);
+      await loadAll();
+    });
+
+    loadAll();
+  </script>
+</body>
+</html>

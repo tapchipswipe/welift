@@ -1,7 +1,11 @@
 # Vendor Portal — How It Works
 
 **Idea:** Large vendors (lawn, plumbing, HVAC) log into a simple portal so **dispatch** can put today’s gate code on the **right tech’s phone** — without the CAM knowing every driver.  
-**Related:** [VENDOR-CONTACTS.md](VENDOR-CONTACTS.md) · [PRODUCT.md](PRODUCT.md) · [GATE-SECURITY.md](GATE-SECURITY.md)
+**Related:** [VENDOR-PORTAL.md](VENDOR-PORTAL.md) · [VENDOR-CONTACTS.md](VENDOR-CONTACTS.md) · [PRODUCT.md](PRODUCT.md) · [GATE-SECURITY.md](GATE-SECURITY.md)
+
+**Full build steps:** [VENDOR-PORTAL-ROADMAP.md](VENDOR-PORTAL-ROADMAP.md)
+
+**Wave 1 (now):** Same send API + UI at [`/access`](../webhook/static/access.html) — CAM or vendor dispatch can send a code to any tech/dispatch phone. Auth-separated Vendor Portal is Wave 2 (this doc).
 
 ---
 

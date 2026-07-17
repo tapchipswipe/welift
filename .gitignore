@@ -7,3 +7,9 @@
 .DS_Store
 **/data/events.jsonl
 **/data/guest-list.json
+configs/retell-ids.json
+**/data/credentials.json
+**/data/credentials.tmp
+**/data/vendors.json
+**/data/vendors.tmp
+**/data/events.jsonl

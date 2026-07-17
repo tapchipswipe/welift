@@ -1,62 +1,50 @@
-# Retell overnight gate webhooks (autonomous)
+# We Lift — CAM Access Desk + Retell Call Attendant
 
-Public HTTPS endpoints Retell calls **mid-call**. AI verifies; myQ API opens. No overnight human.
+Real product spine: CAM authorizes vendors → SMS gate codes (save AI minutes) →
+Retell AI Call Attendant verifies proof PIN when someone has no code.
+
+## Surfaces
+
+| URL | Audience |
+|-----|----------|
+| `GET /access` | **CAM / admin only** — roster CRUD, send/revoke, audit |
+| `GET /gate` | Visitor Call Attendant UX (mirrors pedestal; dials Retell DID) |
+| `GET /health` | Ops flags |
 
 ## Endpoints
 
-| Method | Path | What it does |
-|--------|------|----------------|
-| GET | `/health` | Liveness + autonomous/unlock flags |
-| POST | `/tools/check_guest_list` | Match visitor+host → **approve / deny** |
-| POST | `/tools/open_gate` | myQ Partner API unlock (or simulate for demos) |
-| POST | `/tools/escalate_to_oncall` | Log for daytime review; still deny |
-| POST | `/retell/webhook` | Optional call-ended events |
+| Method | Path | What |
+|--------|------|------|
+| GET/POST | `/access/vendors` | List / upsert vendors (owner vs dispatch) |
+| PATCH | `/access/vendors/{company}` | Update / deactivate |
+| GET | `/access/audit` | Deliveries + credentials + events |
+| POST | `/access/send_code` | Mint + SMS (`phone` optional = roster; `override_window`) |
+| POST | `/access/revoke` | Revoke active PIN |
+| GET | `/gate/meta` | Community + `RETELL_DID` |
+| POST | `/tools/check_guest_list` | Vendors need `proof_code` |
+| POST | `/tools/open_gate` | myQ or `SIMULATE_MYQ_OPEN` |
+| POST | `/tools/escalate_to_oncall` | Log + deny |
 
 ## Start locally
 
 ```bash
 cd webhook
 cp .env.example .env
-# For demos without API:
-#   SIMULATE_MYQ_OPEN=true
-# For live opens:
-#   set MYQ_API_BASE, MYQ_API_KEY, MYQ_FACILITY_ID, MYQ_ENTRANCE_ID
+# TWILIO_*, RETELL_DID, SIMULATE_MYQ_OPEN=true
 ./run.sh
+# CAM:   http://127.0.0.1:8080/access
+# Gate:  http://127.0.0.1:8080/gate
 ```
 
-Production: [DEPLOY.md](DEPLOY.md).
+Retell agent: `python ../scripts/create_agent.py --webhook-base https://YOUR_HOST`  
+Acceptance: [docs/PRODUCT-ACCEPTANCE.md](../docs/PRODUCT-ACCEPTANCE.md)  
+Tablet → Retell: [docs/MYQ-TABLET-RETELL.md](../docs/MYQ-TABLET-RETELL.md)  
+Deploy: [DEPLOY.md](DEPLOY.md)
 
-## Configure `.env`
-
-| Var | Purpose |
-|-----|---------|
-| `AUTONOMOUS` | `true` (default) — no human SMS wake |
-| `HUMAN_SMS_FALLBACK` | Keep `false` |
-| `SIMULATE_MYQ_OPEN` | Demo unlock without API |
-| `MYQ_*` | Required for real autonomous opens |
-| `DEFAULT_COMMUNITY` | `The Inlets` |
-| `RETELL_API_KEY` | Signature verify in prod |
-| `GUEST_LIST_JSON` | Inline list if no file (serverless) |
-
-## Guest list
-
-Edit [`../data/guest-list.json`](../data/guest-list.json) (from example).
-
-Approve test names: **Jordan Lee** / **Sam Rivera**; **Alex Kim** / **Pat Morgan**.
-
-## Smoke test
+## Smoke tests
 
 ```bash
 source .venv/bin/activate
+SIMULATE_MYQ_OPEN=true VERIFY_RETELL_SIGNATURES=false python test_credentials.py
 SIMULATE_MYQ_OPEN=true VERIFY_RETELL_SIGNATURES=false python test_tools.py
-```
-
-## Curl
-
-```bash
-curl -s http://127.0.0.1:8080/health | jq
-
-curl -s -X POST http://127.0.0.1:8080/tools/check_guest_list \
-  -H 'Content-Type: application/json' \
-  -d '{"args":{"community_name":"The Inlets","visitor_name":"Jordan Lee","host_name_or_address":"Sam Rivera","visit_type":"guest"}}' | jq
 ```

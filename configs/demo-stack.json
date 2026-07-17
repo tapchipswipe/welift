@@ -1,0 +1,22 @@
+{
+  "webhook_base": "https://absent-thumbnail-traditions-aspects.trycloudflare.com",
+  "transport": "cloudflared_quick_tunnel_interim",
+  "railway": {
+    "project": "welift",
+    "service": "welift-webhook",
+    "note": "Service+vars created; Metal builds FAILED on free tier \u2014 retry off-peak or upgrade"
+  },
+  "local_smoke": {
+    "approve_jordan_lee": "pass",
+    "deny_random": "pass",
+    "open_gate_simulate": "pass"
+  },
+  "blocked": [
+    "RETELL_API_KEY for tool URL update + DID"
+  ],
+  "cell_test_script": [
+    "APPROVE: Jordan Lee visiting Sam Rivera",
+    "DENY: Random Person visiting Nobody Unit 99",
+    "AMBIGUOUS: mumble names"
+  ]
+}

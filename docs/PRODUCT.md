@@ -61,17 +61,39 @@ CAM adds vendor + access contact phone
 
 Prefer **myQ guest pass / temporary code via Partner API** when available (native to the tablet). Until then: coordinated temp codes with dealer/CAM process, or SMS of a We Lift–issued code the CAP already accepts.
 
+### 2b) Company phone as keypad PIN (big vendors)
+
+**Plan:** For multi-crew vendors, the CAM-registered **company / dispatch phone number** can also open the gate when typed on the keypad during the authorized window.
+
+```text
+Tech at gate (no SMS code on hand)
+  → types company access phone on keypad (US 10-digit national number)
+  → We Lift / myQ accepts that digit string only if company is on roster + window is open
+  → Gate opens — no Call Attendant, no AI charge
+```
+
+| Why | Detail |
+|-----|--------|
+| Big-company UX | Techs already know the office/dispatch number; dispatch doesn’t have to forward today’s random code every truck |
+| Auth still roster-bound | Number must match CAM access contact; only valid inside schedule window |
+| Still not AI | Keypad path stays free of Retell minutes |
+
+**Not:** typing a random employee’s personal cell. **Yes:** the same access-contact phone CAM already stores (owner or dispatch). See [VENDOR-CONTACTS.md](VENDOR-CONTACTS.md).
+
+Implementation note: mint/sync a time-bound keypad credential whose digits **equal** the roster phone (or last-10), or map phone entry via Partner API — dealer/CAP constraints TBD.
+
 ### 3) AI Call Attendant — exception only
 
 ```text
-Someone at pedestal without a working code
+Someone at pedestal without a working code (and phone PIN failed / unknown)
   → taps Call Attendant
-  → AI asks company + proof (PIN / WO / why no code)
+  → AI may remind big vendors to try company phone on keypad first
+  → else asks company + proof (PIN / WO / why no code)
   → on list + proof → myQ remote unlock
   → else deny + log
 ```
 
-AI volume should trend toward **near-zero** for standing vendors who get morning texts.
+AI volume should trend toward **near-zero** for standing vendors who get morning texts or use company-phone keypad entry.
 
 ---
 
@@ -165,6 +187,15 @@ AI is a **feature of the desk**, not the meter you want spinning.
 
 ---
 
+## Retell build paths
+
+Two ways to stand up the Retell agent live side by side and need reconciling before pilot go-live:
+
+- **Retell LLM engine (canonical)** — [`configs/retell-llm.json`](../configs/retell-llm.json) + [`prompt.md`](../prompt.md). Requires a vendor `proof_code` (today's SMS gate PIN) before `open_gate`. Matches the shipped `webhook/credentials.py` Access Desk.
+- **Conversation-flow Import (alt setup path)** — [`configs/retell-agent-import.json`](../configs/retell-agent-import.json), built from [`configs/retell-agent-flow.base.json`](../configs/retell-agent-flow.base.json) via `scripts/build_retell_import.py`. This is Retell's newer dashboard "Import" node-graph format; it still embeds an earlier, code-optional prompt draft (from before the Access Desk / `proof_code` requirement was locked in) and a separate idea — letting big-company vendors type their company/dispatch phone on the keypad instead of an SMS PIN.
+
+**Open item:** before using Option C (Import JSON) for real calls, regenerate its embedded conversation-flow prompt text to require `proof_code` like the canonical prompt, or explicitly decide to ship the company-phone-keypad mechanism as a second, parallel credential type. See the folded-in ideas list at the bottom of [`prompt.md`](../prompt.md).
+
 ## Repo map
 
 | Doc | Use |
@@ -173,6 +204,7 @@ AI is a **feature of the desk**, not the meter you want spinning.
 | [GATE-SECURITY.md](GATE-SECURITY.md) | Proof, PIN/code, anti-spoof |
 | [VENDOR-CONTACTS.md](VENDOR-CONTACTS.md) | SMB owner vs big-company dispatch — who gets the SMS |
 | [VENDOR-PORTAL.md](VENDOR-PORTAL.md) | How dispatch assigns today’s tech and sends the code |
+| [VENDOR-PORTAL-ROADMAP.md](VENDOR-PORTAL-ROADMAP.md) | Complete step-by-step build breakdown (Phase 0→8) |
 | [decision-log.md](pilot-the-inlets/decision-log.md) | Locked Q&A |
 | [prompt.md](../prompt.md) | AI fallback script |
 | [THIS-WEEK.md](pilot-the-inlets/THIS-WEEK.md) | Execution |

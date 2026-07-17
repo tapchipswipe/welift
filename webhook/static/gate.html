@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>We Lift — Gate Call Attendant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #e8eee8;
+      --muted: #8a9a90;
+      --panel: #121a16;
+      --accent: #3d9a6a;
+      --deny: #a33b3b;
+      --ok: #2a7a4b;
+      --line: #2a3a32;
+      --font: "DM Sans", system-ui, sans-serif;
+      --display: "Instrument Serif", Georgia, serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -10%, #2a4a3a 0%, transparent 55%),
+        linear-gradient(165deg, #1e2a24 0%, #0c1210 45%, #152018 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1.5rem 1rem 2.5rem;
+      gap: 1.25rem;
+    }
+    .top {
+      text-align: center;
+      max-width: 420px;
+    }
+    .brand {
+      font-size: 0.7rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+    .top h1 {
+      font-family: var(--display);
+      font-weight: 400;
+      font-size: 1.65rem;
+      margin: 0.35rem 0;
+    }
+    .top p { color: var(--muted); font-size: 0.9rem; line-height: 1.45; }
+    .top a { color: var(--accent); }
+    .kiosk {
+      width: min(100%, 360px);
+      background: #0a100e;
+      border-radius: 28px;
+      border: 1px solid var(--line);
+      padding: 12px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.45);
+    }
+    .screen {
+      background: var(--panel);
+      border-radius: 18px;
+      min-height: 520px;
+      position: relative;
+      overflow: hidden;
+    }
+    .view {
+      display: none;
+      flex-direction: column;
+      min-height: 520px;
+      padding: 1.1rem 1.15rem 1.25rem;
+    }
+    .view.active { display: flex; }
+    .status {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.72rem;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .hero { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 0.75rem; }
+    .hero h2 {
+      font-family: var(--display);
+      font-size: 1.85rem;
+      font-weight: 400;
+      line-height: 1.15;
+    }
+    .hero p { color: var(--muted); font-size: 0.92rem; line-height: 1.45; }
+    .actions { display: flex; flex-direction: column; gap: 0.55rem; }
+    button, .btn {
+      appearance: none;
+      border: none;
+      border-radius: 12px;
+      padding: 0.9rem 1rem;
+      font: inherit;
+      font-weight: 600;
+      text-align: left;
+      cursor: pointer;
+      text-decoration: none;
+      color: #fff;
+      background: var(--accent);
+      display: block;
+    }
+    button.secondary, .btn.secondary {
+      background: transparent;
+      border: 1px solid var(--line);
+      color: var(--ink);
+    }
+    button .hint, .btn .hint {
+      display: block;
+      font-weight: 400;
+      font-size: 0.78rem;
+      opacity: 0.8;
+      margin-top: 0.25rem;
+    }
+    .ring {
+      width: 72px; height: 72px; border-radius: 50%;
+      border: 3px solid var(--accent);
+      border-top-color: transparent;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 0.5rem; }
+    .icon {
+      width: 64px; height: 64px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem;
+    }
+    .icon.ok { background: rgba(42,122,75,0.25); color: #6fd39a; }
+    .icon.no { background: rgba(163,59,59,0.25); color: #f09090; }
+    .pin-row { display: flex; gap: 8px; justify-content: center; margin: 0.5rem 0 1rem; }
+    .pin-row span {
+      width: 40px; height: 48px; border-radius: 10px;
+      border: 1px solid var(--line); background: rgba(0,0,0,0.35);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.25rem; font-weight: 600;
+    }
+    .aside {
+      max-width: 360px;
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.45;
+      border-top: 1px solid var(--line);
+      padding-top: 1rem;
+    }
+    .aside strong { color: var(--ink); }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <div class="brand">We Lift</div>
+    <h1 id="community">Call Attendant</h1>
+    <p>Visitor surface at the pedestal. Primary path is keypad code from SMS. This screen is the AI fallback — Call Attendant → Retell.</p>
+    <p><a href="/access">CAM Access Desk</a></p>
+  </div>
+
+  <div class="kiosk" aria-label="Gate tablet">
+    <div class="screen">
+      <div class="view active" data-view="idle" id="view-idle">
+        <div class="status"><span id="status-community">The Inlets</span><span>Main gate</span></div>
+        <div class="hero">
+          <h2>Welcome</h2>
+          <p>Vendors: use today’s SMS code on the keypad. No code? Call the attendant.</p>
+        </div>
+        <div class="actions">
+          <button type="button" data-go="code">
+            I have a keypad code
+            <span class="hint">Type it on the physical keypad — no AI charge</span>
+          </button>
+          <button type="button" data-go="connecting">
+            Call Attendant
+            <span class="hint">AI verifies company + proof PIN</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="view" data-view="code" id="view-code">
+        <div class="status"><span>The Inlets</span><span>Keypad path</span></div>
+        <div class="hero">
+          <h2>Use the keypad</h2>
+          <p>Enter the 6-digit code from today’s We Lift SMS. Residents use sticker/code as usual.</p>
+          <div class="pin-row" aria-hidden="true">
+            <span>·</span><span>·</span><span>·</span><span>·</span><span>·</span><span>·</span>
+          </div>
+        </div>
+        <div class="actions">
+          <button type="button" class="secondary" data-go="connecting">Code not working? Call Attendant</button>
+          <button type="button" class="secondary" data-go="idle">Back</button>
+        </div>
+      </div>
+
+      <div class="view" data-view="connecting" id="view-connecting">
+        <div class="status"><span>The Inlets</span><span>Connecting…</span></div>
+        <div class="center">
+          <div class="ring" aria-hidden="true"></div>
+          <h2 style="font-family:var(--display);font-size:1.5rem;font-weight:400">Calling attendant</h2>
+          <p style="color:var(--muted);max-width:16rem">Connecting to We Lift AI Call Attendant (Retell).</p>
+        </div>
+        <div class="actions">
+          <button type="button" class="secondary" data-go="idle">Cancel</button>
+        </div>
+      </div>
+
+      <div class="view" data-view="live" id="view-live">
+        <div class="status"><span>The Inlets</span><span>Live · AI attendant</span></div>
+        <div class="hero">
+          <h2>“Company name and today’s PIN?”</h2>
+          <p>Same PIN as the SMS. Company name alone is never enough.</p>
+        </div>
+        <div class="actions">
+          <a class="btn" id="dial-retell" href="#">
+            Dial Retell DID
+            <span class="hint" id="did-hint">Set RETELL_DID in env</span>
+          </a>
+          <button type="button" data-go="granted">Simulate: proof OK → open</button>
+          <button type="button" class="secondary" data-go="denied">Simulate: deny</button>
+          <button type="button" class="secondary" data-go="idle">End</button>
+        </div>
+      </div>
+
+      <div class="view" data-view="granted" id="view-granted">
+        <div class="status"><span>The Inlets</span><span>Access granted</span></div>
+        <div class="center">
+          <div class="icon ok">✓</div>
+          <h2 style="font-family:var(--display);font-size:1.6rem;font-weight:400">Gate opening</h2>
+          <p style="color:var(--muted);max-width:16rem">Wait for the barrier. Do not allow tailgaters.</p>
+        </div>
+        <div class="actions">
+          <button type="button" class="secondary" data-go="idle">Done</button>
+        </div>
+      </div>
+
+      <div class="view" data-view="denied" id="view-denied">
+        <div class="status"><span>The Inlets</span><span>Denied</span></div>
+        <div class="center">
+          <div class="icon no">✕</div>
+          <h2 style="font-family:var(--display);font-size:1.6rem;font-weight:400">Unable to admit</h2>
+          <p style="color:var(--muted);max-width:16rem">Ask CAM to re-issue a code, or try again with the correct company + PIN.</p>
+        </div>
+        <div class="actions">
+          <button type="button" data-go="connecting">Call again</button>
+          <button type="button" class="secondary" data-go="idle">Done</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="aside">
+    <strong>Production wiring:</strong> Point the myQ tablet overnight / Call Attendant number at the Retell DID.
+    See <code>docs/MYQ-TABLET-RETELL.md</code>. Simulate buttons here only mirror approve/deny UX when you are not on a live call.
+  </div>
+
+  <script>
+    let connectTimer;
+    const views = document.querySelectorAll(".view");
+
+    function show(name) {
+      clearTimeout(connectTimer);
+      views.forEach((v) => v.classList.toggle("active", v.dataset.view === name));
+      if (name === "connecting") {
+        connectTimer = setTimeout(() => show("live"), 1800);
+      }
+    }
+
+    document.querySelectorAll("[data-go]").forEach((el) => {
+      el.addEventListener("click", () => show(el.dataset.go));
+    });
+
+    fetch("/gate/meta")
+      .then((r) => r.json())
+      .then((m) => {
+        const name = m.community_name || "The Inlets";
+        document.getElementById("community").textContent = name + " — Call Attendant";
+        document.getElementById("status-community").textContent = name;
+        document.querySelectorAll(".status span:first-child").forEach((el) => {
+          el.textContent = name;
+        });
+        const dial = document.getElementById("dial-retell");
+        const hint = document.getElementById("did-hint");
+        if (m.retell_did) {
+          dial.href = m.retell_tel_href || ("tel:" + m.retell_did);
+          hint.textContent = m.retell_did;
+        } else {
+          dial.addEventListener("click", (e) => {
+            e.preventDefault();
+            hint.textContent = "Set RETELL_DID in webhook/.env";
+          });
+        }
+      })
+      .catch(() => {});
+  </script>
+</body>
+</html>
