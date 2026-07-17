@@ -8,6 +8,7 @@ import os
 import sys
 from pathlib import Path
 
+os.environ.setdefault("DATABASE_URL", "sqlite://")
 os.environ.setdefault("VERIFY_RETELL_SIGNATURES", "false")
 os.environ.setdefault("DEFAULT_COMMUNITY", "The Inlets")
 os.environ.setdefault("SERVERLESS", "true")

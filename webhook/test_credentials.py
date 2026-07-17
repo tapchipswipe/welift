@@ -10,6 +10,7 @@ from pathlib import Path
 
 TMP = Path(tempfile.mkdtemp())
 SEED = Path(__file__).resolve().parents[1] / "data" / "vendors.seed.json"
+os.environ["DATABASE_URL"] = "sqlite://"
 os.environ["CREDENTIALS_PATH"] = str(TMP / "credentials.json")
 os.environ["VENDORS_PATH"] = str(TMP / "vendors.json")
 os.environ["VENDORS_SEED_PATH"] = str(SEED)

@@ -24,6 +24,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
 import credentials as creds
+import models
+models.init_db_and_seed()
 
 load_dotenv()
 
@@ -153,14 +155,78 @@ def _entry_active(entry: dict[str, Any], now: datetime, tz_name: str) -> bool:
 def _load_guest_list() -> dict[str, Any]:
     if GUEST_LIST_JSON:
         return json.loads(GUEST_LIST_JSON)
-    if not GUEST_LIST_PATH.exists():
-        example = DATA_DIR / "guest-list.example.json"
-        raise FileNotFoundError(
-            f"Missing guest list at {GUEST_LIST_PATH}. "
-            f"Copy {example} → guest-list.json, or set GUEST_LIST_JSON."
-        )
-    with GUEST_LIST_PATH.open(encoding="utf-8") as f:
-        return json.load(f)
+    from models import SessionLocal, Community, GuestEntry
+    db = SessionLocal()
+    try:
+        comm = db.query(Community).first()
+        tz = comm.timezone if comm else "America/New_York"
+        comm_name = comm.name if comm else "The Inlets"
+        
+        entries = db.query(GuestEntry).all()
+        entry_list = []
+        for e in entries:
+            val_str = e.valid_until.isoformat() if e.valid_until else None
+            entry_list.append({
+                "visitor_name": e.visitor_name,
+                "company_name": e.company_name,
+                "host_name": e.host_name,
+                "host_address": e.host_address,
+                "valid_until": val_str,
+                "notes": e.notes,
+            })
+        return {
+            "community_name": comm_name,
+            "timezone": tz,
+            "entries": entry_list
+        }
+    finally:
+        db.close()
+
+
+def _save_guest_list(book: dict[str, Any]) -> None:
+    global GUEST_LIST_JSON
+    if GUEST_LIST_JSON:
+        GUEST_LIST_JSON = json.dumps(book)
+    from models import SessionLocal, Community, GuestEntry
+    db = SessionLocal()
+    try:
+        comm = db.query(Community).first()
+        if comm:
+            if "community_name" in book:
+                comm.name = book["community_name"]
+            if "timezone" in book:
+                comm.timezone = book["timezone"]
+        else:
+            comm = Community(
+                name=book.get("community_name", "The Inlets"),
+                timezone=book.get("timezone", "America/New_York")
+            )
+            db.add(comm)
+            
+        db.query(GuestEntry).delete()
+        
+        for entry in book.get("entries", []):
+            valid_until_dt = None
+            if entry.get("valid_until"):
+                try:
+                    valid_until_dt = datetime.fromisoformat(entry["valid_until"].replace("Z", "+00:00")).replace(tzinfo=None)
+                except ValueError:
+                    pass
+            db.add(GuestEntry(
+                community_name=book.get("community_name", "The Inlets"),
+                visitor_name=entry.get("visitor_name"),
+                company_name=entry.get("company_name"),
+                host_name=entry.get("host_name"),
+                host_address=entry.get("host_address"),
+                valid_until=valid_until_dt,
+                notes=entry.get("notes")
+            ))
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
 
 
 def _append_event(event: dict[str, Any]) -> None:
@@ -533,6 +599,76 @@ async def access_revoke(request: Request) -> JSONResponse:
         }
     )
     return JSONResponse({"ok": True, "revoked": n})
+
+
+@app.post("/gate/verify_code")
+async def gate_verify_code(request: Request) -> JSONResponse:
+    body = await request.json()
+    code = (body.get("code") or "").strip()
+    community = (body.get("community_name") or DEFAULT_COMMUNITY).strip()
+    if not code:
+        raise HTTPException(status_code=400, detail="code required")
+
+    store = creds.load_store()
+    now = creds._now()
+    matched_cred = None
+    hashed_code = creds._hash_code(code)
+
+    for c in store.get("credentials", []):
+        if c.get("status") != "active":
+            continue
+        cred_comm = c.get("community") or c.get("community_name")
+        if cred_comm != community:
+            continue
+        until = creds._parse_iso(c.get("valid_until"))
+        if until and now > until:
+            continue
+        if c.get("code_hash") == hashed_code:
+            matched_cred = c
+            break
+
+    if matched_cred:
+        myq = _try_myq_unlock("main")
+        result = {
+            "ok": True,
+            "company_name": matched_cred.get("company_name"),
+            "myq": myq
+        }
+        _append_event({"tool": "gate_keypad_entry", "code": "***", "result": result})
+        return JSONResponse(result)
+
+    return JSONResponse({"ok": False, "reason": "invalid_code"})
+
+
+@app.get("/access/guest_list")
+async def get_access_guest_list() -> JSONResponse:
+    try:
+        book = _load_guest_list()
+        return JSONResponse(book)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.post("/access/guest_list")
+async def post_access_guest_list(request: Request) -> JSONResponse:
+    try:
+        body = await request.json()
+        if "entries" not in body:
+            raise HTTPException(status_code=400, detail="entries key required")
+
+        book = _load_guest_list()
+        book["entries"] = body["entries"]
+
+        if "community_name" in body:
+            book["community_name"] = body["community_name"]
+        if "timezone" in body:
+            book["timezone"] = body["timezone"]
+
+        _save_guest_list(book)
+        _append_event({"tool": "access_update_guest_list", "count": len(book["entries"])})
+        return JSONResponse({"ok": True, "count": len(book["entries"])})
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @app.post("/tools/check_guest_list")

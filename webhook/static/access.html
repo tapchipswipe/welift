@@ -193,6 +193,22 @@
     .hint { font-size: 0.8rem; color: var(--warn); margin-top: 0.5rem; }
     .log-item { padding: 0.45rem 0; border-bottom: 1px solid var(--line); font-size: 0.82rem; color: var(--muted); }
     .log-item strong { color: var(--ink); }
+    .tab-btn {
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .tab-btn.active {
+      background: var(--accent);
+      color: #fff;
+    }
+    .tab-btn.secondary {
+      background: transparent;
+      border: 1px solid var(--line);
+      color: var(--muted);
+    }
+    .tab-btn.secondary:hover {
+      color: var(--ink);
+      border-color: var(--muted);
+    }
   </style>
 </head>
 <body>
@@ -210,10 +226,17 @@
 
   <main>
     <div>
-      <section>
-        <h2>Vendor roster</h2>
-        <div id="roster"></div>
-      </section>
+      <!-- Tabs -->
+      <div class="tabs" style="display:flex;gap:0.5rem;margin-bottom:1rem">
+        <button type="button" class="tab-btn active" data-tab="tab-vendors" style="flex:1;text-align:center;padding:0.5rem">Vendors</button>
+        <button type="button" class="tab-btn secondary" data-tab="tab-guests" style="flex:1;text-align:center;padding:0.5rem">Social Guests</button>
+      </div>
+
+      <div id="tab-vendors">
+        <section>
+          <h2>Vendor roster</h2>
+          <div id="roster"></div>
+        </section>
 
       <section style="margin-top:1.25rem">
         <h2>Add / update vendor</h2>
@@ -248,6 +271,59 @@
         </div>
         <div class="msg" id="vendor-msg"></div>
       </section>
+      </div>
+
+      <!-- Social Guests Tab -->
+      <div id="tab-guests" style="display:none">
+        <section>
+          <h2>Social Guest List</h2>
+          <table style="margin-top:0.5rem">
+            <thead>
+              <tr>
+                <th>Visitor</th>
+                <th>Host Name</th>
+                <th>Address/Unit</th>
+                <th>Validity</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="guest-list-body">
+              <!-- filled by JS -->
+            </tbody>
+          </table>
+        </section>
+
+        <section style="margin-top:1.25rem">
+          <h2>Add Social Guest</h2>
+          <div class="row2">
+            <div>
+              <label for="g-visitor">Visitor Name</label>
+              <input id="g-visitor" placeholder="Jordan Lee" />
+            </div>
+            <div>
+              <label for="g-host">Resident Host Name</label>
+              <input id="g-host" placeholder="Sam Rivera" />
+            </div>
+          </div>
+          <div class="row2">
+            <div>
+              <label for="g-address">Host Unit/Address</label>
+              <input id="g-address" placeholder="12 Oak Lane" />
+            </div>
+            <div>
+              <label for="g-valid-until">Valid Until (optional)</label>
+              <input id="g-valid-until" type="datetime-local" placeholder="YYYY-MM-DD" />
+            </div>
+          </div>
+          <label for="g-notes">Notes</label>
+          <input id="g-notes" placeholder="Overnight guest" />
+          <div class="actions">
+            <button type="button" id="btn-save-guest">Save Guest</button>
+            <button type="button" class="secondary" id="btn-clear-guest">Clear</button>
+          </div>
+          <div class="msg" id="guest-msg"></div>
+        </section>
+      </div>
     </div>
 
     <div>
@@ -278,6 +354,7 @@
 
   <script>
     let meta = { vendors: [], community_name: "The Inlets" };
+    let guestList = { entries: [] };
 
     function show(el, text, ok) {
       el.className = "msg show " + (ok ? "ok" : "err");
@@ -285,17 +362,20 @@
     }
 
     async function loadAll() {
-      const [m, a] = await Promise.all([
+      const [m, a, g] = await Promise.all([
         fetch("/access/meta").then((r) => r.json()),
         fetch("/access/audit").then((r) => r.json()),
+        fetch("/access/guest_list").then((r) => r.json()).catch(() => ({ entries: [] }))
       ]);
       meta = m;
+      guestList = g;
       document.getElementById("title").textContent =
         (m.community_name || "Community") + " — CAM Access Desk";
       document.getElementById("twilio-hint").hidden = !!m.twilio_configured;
       renderRoster(m.vendors || []);
       fillSendSelect(m.vendors || []);
       renderAudit(a);
+      renderGuestList(g.entries || []);
     }
 
     function renderRoster(vendors) {
@@ -478,6 +558,120 @@
       const data = await res.json();
       show(msg, `Revoked ${data.revoked} active code(s) for ${company}`, true);
       await loadAll();
+    });
+
+    // Tab Toggle Logic
+    document.querySelectorAll(".tab-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tab-btn").forEach((b) => {
+          b.classList.toggle("active", b === btn);
+          b.classList.toggle("secondary", b !== btn);
+        });
+        const target = btn.dataset.tab;
+        document.getElementById("tab-vendors").style.display = target === "tab-vendors" ? "block" : "none";
+        document.getElementById("tab-guests").style.display = target === "tab-guests" ? "block" : "none";
+      });
+    });
+
+    // Render Guest List
+    function renderGuestList(entries) {
+      const el = document.getElementById("guest-list-body");
+      if (!entries || !entries.length) {
+        el.innerHTML = "<tr><td colspan='5' class='hint' style='text-align:center;padding:1rem 0;'>No social guests yet — add one below.</td></tr>";
+        return;
+      }
+      el.innerHTML = entries
+        .map((g, idx) => {
+          const valDate = g.valid_until ? esc(g.valid_until.slice(0, 16).replace("T", " ")) : "Always";
+          return `<tr>
+            <td><strong>${esc(g.visitor_name)}</strong></td>
+            <td>${esc(g.host_name || "")}</td>
+            <td>${esc(g.host_address || "")}</td>
+            <td>${valDate}</td>
+            <td>
+              <button type="button" class="danger" style="padding:0.25rem 0.45rem;font-size:0.75rem" onclick="deleteGuest(${idx})">Remove</button>
+            </td>
+          </tr>`;
+        })
+        .join("");
+    }
+
+    // Delete Guest
+    window.deleteGuest = async function(idx) {
+      const msg = document.getElementById("guest-msg");
+      if (!confirm("Are you sure you want to remove this guest?")) return;
+      guestList.entries.splice(idx, 1);
+      try {
+        const res = await fetch("/access/guest_list", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(guestList)
+        });
+        if (!res.ok) throw new Error("Failed to delete guest");
+        await loadAll();
+        show(msg, "Guest removed successfully!", true);
+      } catch (e) {
+        show(msg, String(e.message || e), false);
+      }
+    };
+
+    // Add Guest
+    document.getElementById("btn-save-guest").addEventListener("click", async () => {
+      const msg = document.getElementById("guest-msg");
+      const visitor = document.getElementById("g-visitor").value.trim();
+      const hostName = document.getElementById("g-host").value.trim();
+      const hostAddress = document.getElementById("g-address").value.trim();
+      const validUntil = document.getElementById("g-valid-until").value;
+      const notes = document.getElementById("g-notes").value.trim();
+
+      if (!visitor || (!hostName && !hostAddress)) {
+        show(msg, "Visitor name and either host name or address are required.", false);
+        return;
+      }
+
+      const newEntry = {
+        visitor_name: visitor,
+        host_name: hostName || null,
+        host_address: hostAddress || null,
+        valid_until: validUntil || null,
+        notes: notes || ""
+      };
+
+      if (!guestList.entries) guestList.entries = [];
+      guestList.entries.push(newEntry);
+
+      try {
+        const res = await fetch("/access/guest_list", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(guestList)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Failed to add guest");
+        
+        show(msg, `Guest ${visitor} added successfully!`, true);
+        
+        // Clear fields
+        document.getElementById("g-visitor").value = "";
+        document.getElementById("g-host").value = "";
+        document.getElementById("g-address").value = "";
+        document.getElementById("g-valid-until").value = "";
+        document.getElementById("g-notes").value = "";
+        
+        await loadAll();
+      } catch (e) {
+        show(msg, String(e.message || e), false);
+        guestList.entries.pop();
+      }
+    });
+
+    document.getElementById("btn-clear-guest").addEventListener("click", () => {
+      document.getElementById("g-visitor").value = "";
+      document.getElementById("g-host").value = "";
+      document.getElementById("g-address").value = "";
+      document.getElementById("g-valid-until").value = "";
+      document.getElementById("g-notes").value = "";
+      document.getElementById("guest-msg").classList.remove("show");
     });
 
     loadAll();

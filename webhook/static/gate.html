@@ -139,6 +139,40 @@
       display: flex; align-items: center; justify-content: center;
       font-size: 1.25rem; font-weight: 600;
     }
+    .keypad-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      width: 100%;
+      max-width: 240px;
+      margin: 0.25rem auto 0;
+    }
+    .key-btn {
+      appearance: none;
+      border: none;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--line);
+      color: #fff;
+      font-size: 1.1rem;
+      font-weight: 600;
+      border-radius: 10px;
+      padding: 0.45rem 0;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .key-btn:active {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+    .key-btn.secondary-key {
+      background: rgba(255,255,255,0.03);
+      font-size: 0.9rem;
+      font-weight: 400;
+    }
     .aside {
       max-width: 360px;
       font-size: 0.82rem;
@@ -180,14 +214,32 @@
 
       <div class="view" data-view="code" id="view-code">
         <div class="status"><span>The Inlets</span><span>Keypad path</span></div>
-        <div class="hero">
-          <h2>Use the keypad</h2>
-          <p>Enter the 6-digit code from today’s We Lift SMS. Residents use sticker/code as usual.</p>
+        <div class="hero" style="justify-content: flex-start; gap: 0.25rem;">
+          <h2>Enter gate code</h2>
           <div class="pin-row" aria-hidden="true">
-            <span>·</span><span>·</span><span>·</span><span>·</span><span>·</span><span>·</span>
+            <span class="pin-dot">·</span>
+            <span class="pin-dot">·</span>
+            <span class="pin-dot">·</span>
+            <span class="pin-dot">·</span>
+            <span class="pin-dot">·</span>
+            <span class="pin-dot">·</span>
+          </div>
+          <div class="keypad-grid">
+            <button type="button" class="key-btn" data-val="1">1</button>
+            <button type="button" class="key-btn" data-val="2">2</button>
+            <button type="button" class="key-btn" data-val="3">3</button>
+            <button type="button" class="key-btn" data-val="4">4</button>
+            <button type="button" class="key-btn" data-val="5">5</button>
+            <button type="button" class="key-btn" data-val="6">6</button>
+            <button type="button" class="key-btn" data-val="7">7</button>
+            <button type="button" class="key-btn" data-val="8">8</button>
+            <button type="button" class="key-btn" data-val="9">9</button>
+            <button type="button" class="key-btn secondary-key" data-val="clear">C</button>
+            <button type="button" class="key-btn" data-val="0">0</button>
+            <button type="button" class="key-btn secondary-key" data-val="back">⌫</button>
           </div>
         </div>
-        <div class="actions">
+        <div class="actions" style="margin-top: auto;">
           <button type="button" class="secondary" data-go="connecting">Code not working? Call Attendant</button>
           <button type="button" class="secondary" data-go="idle">Back</button>
         </div>
@@ -258,17 +310,76 @@
     let connectTimer;
     const views = document.querySelectorAll(".view");
 
+    // Keypad Logic
+    let typedCode = "";
+    const dots = document.querySelectorAll(".pin-dot");
+
+    function updateDots() {
+      dots.forEach((dot, idx) => {
+        if (idx < typedCode.length) {
+          dot.textContent = typedCode[idx];
+          dot.style.color = "var(--accent)";
+        } else {
+          dot.textContent = "·";
+          dot.style.color = "";
+        }
+      });
+    }
+
     function show(name) {
       clearTimeout(connectTimer);
       views.forEach((v) => v.classList.toggle("active", v.dataset.view === name));
       if (name === "connecting") {
         connectTimer = setTimeout(() => show("live"), 1800);
       }
+      if (name === "code") {
+        typedCode = "";
+        updateDots();
+      }
     }
 
     document.querySelectorAll("[data-go]").forEach((el) => {
       el.addEventListener("click", () => show(el.dataset.go));
     });
+
+    document.querySelectorAll(".key-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const val = btn.dataset.val;
+        if (val === "clear") {
+          typedCode = "";
+          updateDots();
+        } else if (val === "back") {
+          typedCode = typedCode.slice(0, -1);
+          updateDots();
+        } else if (typedCode.length < 6) {
+          typedCode += val;
+          updateDots();
+          if (typedCode.length === 6) {
+            verifyCode(typedCode);
+          }
+        }
+      });
+    });
+
+    function verifyCode(code) {
+      const community = document.getElementById("status-community").textContent;
+      fetch("/gate/verify_code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: code, community_name: community })
+      })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.ok) {
+          show("granted");
+        } else {
+          show("denied");
+        }
+      })
+      .catch(() => {
+        show("denied");
+      });
+    }
 
     fetch("/gate/meta")
       .then((r) => r.json())

@@ -89,13 +89,14 @@ def main() -> int:
 
     client = Retell(api_key=api_key)
 
+    llm_cfg.setdefault("default_dynamic_variables", {})
+    llm_cfg["default_dynamic_variables"]["community_name"] = args.community
+
     print("Creating Retell LLM (proof-PIN vendor path)…")
     llm = client.llm.create(**llm_cfg)
     print(f"  llm_id = {llm.llm_id}")
 
     agent_cfg["response_engine"] = {"type": "retell-llm", "llm_id": llm.llm_id}
-    agent_cfg.setdefault("default_dynamic_variables", {})
-    agent_cfg["default_dynamic_variables"]["community_name"] = args.community
 
     print("Creating voice agent…")
     agent = client.agent.create(**agent_cfg)
