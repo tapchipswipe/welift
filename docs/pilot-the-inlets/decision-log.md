@@ -99,6 +99,21 @@ Bar for success: pedestal audio, routing, unlock, logging on live hardware.
 
 ---
 
+## Q9 — Company phone as keypad PIN (Lucas — Jul 17, 2026)
+
+**Decision:** **Planned.** Big-company vendors may enter by typing the CAM-registered **company / dispatch phone number** on the keypad during the authorized window (another no-AI path alongside SMS codes).
+
+| Item | Choice |
+|------|--------|
+| Which number | Same **access contact** phone on the roster (owner or dispatch) — not arbitrary tech cells |
+| Format | Typically US **10-digit** national number on the keypad |
+| When valid | Company authorized **and** inside schedule window |
+| AI role | Remind callers to try company phone on keypad first; AI remains fallback if that fails |
+
+**Implication:** Credential service must support minting/mapping phone-digit PINs (or myQ equivalent). Documented in [PRODUCT.md](../PRODUCT.md) §2b and [VENDOR-CONTACTS.md](../VENDOR-CONTACTS.md) Model D.
+
+---
+
 ## Additional locked decisions
 
 | Topic | Decision |

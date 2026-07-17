@@ -61,17 +61,39 @@ CAM adds vendor + access contact phone
 
 Prefer **myQ guest pass / temporary code via Partner API** when available (native to the tablet). Until then: coordinated temp codes with dealer/CAM process, or SMS of a We Lift–issued code the CAP already accepts.
 
+### 2b) Company phone as keypad PIN (big vendors)
+
+**Plan:** For multi-crew vendors, the CAM-registered **company / dispatch phone number** can also open the gate when typed on the keypad during the authorized window.
+
+```text
+Tech at gate (no SMS code on hand)
+  → types company access phone on keypad (US 10-digit national number)
+  → We Lift / myQ accepts that digit string only if company is on roster + window is open
+  → Gate opens — no Call Attendant, no AI charge
+```
+
+| Why | Detail |
+|-----|--------|
+| Big-company UX | Techs already know the office/dispatch number; dispatch doesn’t have to forward today’s random code every truck |
+| Auth still roster-bound | Number must match CAM access contact; only valid inside schedule window |
+| Still not AI | Keypad path stays free of Retell minutes |
+
+**Not:** typing a random employee’s personal cell. **Yes:** the same access-contact phone CAM already stores (owner or dispatch). See [VENDOR-CONTACTS.md](VENDOR-CONTACTS.md).
+
+Implementation note: mint/sync a time-bound keypad credential whose digits **equal** the roster phone (or last-10), or map phone entry via Partner API — dealer/CAP constraints TBD.
+
 ### 3) AI Call Attendant — exception only
 
 ```text
-Someone at pedestal without a working code
+Someone at pedestal without a working code (and phone PIN failed / unknown)
   → taps Call Attendant
-  → AI asks company + proof (PIN / WO / why no code)
+  → AI may remind big vendors to try company phone on keypad first
+  → else asks company + proof (PIN / WO / why no code)
   → on list + proof → myQ remote unlock
   → else deny + log
 ```
 
-AI volume should trend toward **near-zero** for standing vendors who get morning texts.
+AI volume should trend toward **near-zero** for standing vendors who get morning texts or use company-phone keypad entry.
 
 ---
 

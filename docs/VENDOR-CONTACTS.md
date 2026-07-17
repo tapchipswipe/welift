@@ -76,6 +76,22 @@ Authentication for the happy path = **code held by the authorized company**, not
 
 Use Model C for showings, emergency plumber, or when CAM insists on tighter control — not for weekly mow.
 
+### Model D — Company phone as keypad PIN (big vendors · planned)
+
+**When:** Multi-crew firm; tech at the pedestal doesn’t have today’s forwarded SMS code.  
+**CAM stores:** Same access contact phone as Model B (dispatch / office).  
+**We Lift:** During the authorized window, that **company phone number’s digits** are a valid keypad entry (typically US 10-digit national number — not country code, not a random tech cell).
+
+```text
+Mike (GreenSide) at The Inlets keypad
+  → types GreenSide dispatch number on file
+  → gate opens if GreenSide is authorized now
+```
+
+**Why it helps big companies:** every tech already knows “the office number”; dispatch isn’t a bottleneck for every truck.  
+**Auth property:** still bound to CAM roster + schedule — not a public Facebook code.  
+**Fallback:** if phone PIN fails → Call Attendant (AI) with company + proof.
+
 ---
 
 ## What CAM actually maintains (keep it tiny)
@@ -136,8 +152,9 @@ Mitigations for dispatch model: **daily rotate**, window expiry, log issuance, A
 1. **CAM authorizes companies + one access contact** (owner or dispatch).  
 2. **We Lift delivers codes to that contact** — not “every possible driver.”  
 3. **Large vendors route codes internally** like they route job tickets.  
-4. **Optional:** [vendor portal](VENDOR-PORTAL.md) so dispatch assigns today’s tech phone and sends the code.  
-5. **AI** remains backup when the person at the pedestal has no code.
+4. **Planned:** company access phone digits work as a **keypad PIN** during the window (Model D) — another no-AI path for big vendors.  
+5. **Optional:** [vendor portal](VENDOR-PORTAL.md) so dispatch assigns today’s tech phone and sends the code.  
+6. **AI** remains backup when the person at the pedestal has no SMS code and phone PIN failed / unknown.
 
 ---
 
