@@ -187,6 +187,15 @@ AI is a **feature of the desk**, not the meter you want spinning.
 
 ---
 
+## Retell build paths
+
+Two ways to stand up the Retell agent live side by side and need reconciling before pilot go-live:
+
+- **Retell LLM engine (canonical)** — [`configs/retell-llm.json`](../configs/retell-llm.json) + [`prompt.md`](../prompt.md). Requires a vendor `proof_code` (today's SMS gate PIN) before `open_gate`. Matches the shipped `webhook/credentials.py` Access Desk.
+- **Conversation-flow Import (alt setup path)** — [`configs/retell-agent-import.json`](../configs/retell-agent-import.json), built from [`configs/retell-agent-flow.base.json`](../configs/retell-agent-flow.base.json) via `scripts/build_retell_import.py`. This is Retell's newer dashboard "Import" node-graph format; it still embeds an earlier, code-optional prompt draft (from before the Access Desk / `proof_code` requirement was locked in) and a separate idea — letting big-company vendors type their company/dispatch phone on the keypad instead of an SMS PIN.
+
+**Open item:** before using Option C (Import JSON) for real calls, regenerate its embedded conversation-flow prompt text to require `proof_code` like the canonical prompt, or explicitly decide to ship the company-phone-keypad mechanism as a second, parallel credential type. See the folded-in ideas list at the bottom of [`prompt.md`](../prompt.md).
+
 ## Repo map
 
 | Doc | Use |
