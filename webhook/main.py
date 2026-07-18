@@ -36,7 +36,9 @@ logging.basicConfig(
 log = logging.getLogger("gate-webhook")
 
 APP_DIR = Path(__file__).resolve().parent
-DATA_DIR = APP_DIR.parent / "data"
+DATA_DIR = APP_DIR / "data"
+if not DATA_DIR.exists() and (APP_DIR.parent / "data").exists():
+    DATA_DIR = APP_DIR.parent / "data"
 STATIC_DIR = APP_DIR / "static"
 
 GUEST_LIST_PATH = Path(os.getenv("GUEST_LIST_PATH", str(DATA_DIR / "guest-list.json")))

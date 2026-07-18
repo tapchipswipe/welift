@@ -14,8 +14,15 @@ load_dotenv()
 
 # Database URL configuration
 APP_DIR = Path(__file__).resolve().parent
-DATA_DIR = APP_DIR.parent / "data"
-DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DATA_DIR}/welift.db")
+DATA_DIR = APP_DIR / "data"
+if not DATA_DIR.exists() and (APP_DIR.parent / "data").exists():
+    DATA_DIR = APP_DIR.parent / "data"
+
+if os.getenv("VERCEL") or os.getenv("SERVERLESS", "").lower() in {"1", "true", "yes"}:
+    default_db = "sqlite:////tmp/welift.db"
+else:
+    default_db = f"sqlite:///{DATA_DIR}/welift.db"
+DATABASE_URL = os.getenv("DATABASE_URL", default_db)
 
 # Standardize postgres:// -> postgresql:// for SQLAlchemy compatibility
 if DATABASE_URL.startswith("postgres://"):
@@ -25,7 +32,6 @@ if DATABASE_URL.startswith("postgres://"):
 if DATABASE_URL.startswith("sqlite:///"):
     db_path = Path(DATABASE_URL.replace("sqlite:///", ""))
     db_path.parent.mkdir(parents=True, exist_ok=True)
-
 
 if DATABASE_URL in {"sqlite://", "sqlite:///:memory:"}:
     from sqlalchemy.pool import StaticPool
@@ -58,7 +64,7 @@ class VendorCompany(Base):
     access_contact_type = Column(String, default="dispatch")  # dispatch or owner
     access_phone = Column(String, nullable=True)
     invite_email = Column(String, nullable=True)
-    window = Column(String, default="Mon-Fri 07:00-18:00")
+    window = Column(String, default="Mon-Fri 07:00-18:00", nullable=False)
     notes = Column(String, nullable=True)
     active = Column(Boolean, default=True, nullable=False)
 
@@ -67,7 +73,7 @@ class GuestEntry(Base):
     __tablename__ = "guest_entries"
     id = Column(Integer, primary_key=True, index=True)
     community_name = Column(String, nullable=False, default="The Inlets")
-    visitor_name = Column(String, index=True, nullable=False)
+    visitor_name = Column(String, nullable=False)
     company_name = Column(String, nullable=True)
     host_name = Column(String, nullable=True)
     host_address = Column(String, nullable=True)
@@ -103,7 +109,7 @@ class Delivery(Base):
     last4 = Column(String, nullable=False)
     window_override = Column(Boolean, default=False, nullable=False)
 
-# 6. AuditEvent Model
+# 6. AuditEvent Model (stores structured log actions)
 class AuditEvent(Base):
     __tablename__ = "audit_events"
     id = Column(Integer, primary_key=True, index=True)
@@ -121,140 +127,144 @@ def get_db() -> Generator[Session, None, None]:
 
 # Auto-Seeder
 def init_db_and_seed() -> None:
-    Base.metadata.create_all(bind=engine)
-    db = SessionLocal()
     try:
-        # Check if community table is empty
-        if db.query(Community).count() > 0:
-            return  # already seeded
-            
-        print("Initializing relational database and seeding from JSON files…")
-        
-        # 1. Seed Community & Guest List
-        guest_list_path = DATA_DIR / "guest-list.json"
-        if not guest_list_path.exists():
-            guest_list_path = DATA_DIR / "guest-list.example.json"
-        if not guest_list_path.exists():
-            guest_list_path = APP_DIR / "guest-list.example.json"
-            
-        timezone_str = "America/New_York"
-        guest_entries = []
-        if guest_list_path.exists():
-            try:
-                with guest_list_path.open("r", encoding="utf-8") as f:
-                    gl_data = json.load(f)
-                    timezone_str = gl_data.get("timezone", "America/New_York")
-                    guest_entries = gl_data.get("entries", [])
-            except Exception as e:
-                print(f"Failed to read guest list seed: {e}")
+        Base.metadata.create_all(bind=engine)
+        db = SessionLocal()
+        try:
+            # Check if community table is empty
+            if db.query(Community).count() > 0:
+                return  # already seeded
                 
-        inlets = Community(name="The Inlets", timezone=timezone_str)
-        db.add(inlets)
-        db.commit()
-        
-        # Seed Guest Entries
-        for entry in guest_entries:
-            valid_until_dt = None
-            if entry.get("valid_until"):
+            print("Initializing relational database and seeding from JSON files…")
+            
+            # 1. Seed Community & Guest List
+            guest_list_path = DATA_DIR / "guest-list.json"
+            if not guest_list_path.exists():
+                guest_list_path = DATA_DIR / "guest-list.example.json"
+            if not guest_list_path.exists():
+                guest_list_path = APP_DIR / "guest-list.example.json"
+                
+            timezone_str = "America/New_York"
+            guest_entries = []
+            if guest_list_path.exists():
                 try:
-                    valid_until_dt = datetime.fromisoformat(entry["valid_until"].replace("Z", "+00:00"))
-                except ValueError:
-                    pass
-            db.add(GuestEntry(
-                community_name="The Inlets",
-                visitor_name=entry.get("visitor_name"),
-                company_name=entry.get("company_name"),
-                host_name=entry.get("host_name"),
-                host_address=entry.get("host_address"),
-                valid_until=valid_until_dt,
-                notes=entry.get("notes")
-            ))
+                    with guest_list_path.open("r", encoding="utf-8") as f:
+                        gl_data = json.load(f)
+                        timezone_str = gl_data.get("timezone", "America/New_York")
+                        guest_entries = gl_data.get("entries", [])
+                except Exception as e:
+                    print(f"Failed to read guest list seed: {e}")
+                    
+            inlets = Community(name="The Inlets", timezone=timezone_str)
+            db.add(inlets)
+            db.commit()
             
-        # 2. Seed Vendors
-        vendors_path = DATA_DIR / "vendors.json"
-        if not vendors_path.exists():
-            vendors_path = DATA_DIR / "vendors.seed.json"
-        if not vendors_path.exists():
-            vendors_path = APP_DIR / "vendors.seed.json"
-            
-        vendors = []
-        if vendors_path.exists():
-            try:
-                with vendors_path.open("r", encoding="utf-8") as f:
-                    v_data = json.load(f)
-                    vendors = v_data.get("vendors", []) if isinstance(v_data, dict) else v_data
-            except Exception as e:
-                print(f"Failed to read vendors seed: {e}")
+            # Seed Guest Entries
+            for entry in guest_entries:
+                valid_until_dt = None
+                if entry.get("valid_until"):
+                    try:
+                        dt = datetime.fromisoformat(entry["valid_until"].replace("Z", "+00:00"))
+                        valid_until_dt = dt.replace(tzinfo=None)
+                    except ValueError:
+                        pass
+                db.add(GuestEntry(
+                    community_name="The Inlets",
+                    visitor_name=entry.get("visitor_name"),
+                    company_name=entry.get("company_name"),
+                    host_name=entry.get("host_name"),
+                    host_address=entry.get("host_address"),
+                    valid_until=valid_until_dt,
+                    notes=entry.get("notes")
+                ))
                 
-        for v in vendors:
-            db.add(VendorCompany(
-                community_name="The Inlets",
-                company_name=v.get("company_name"),
-                access_contact_type=v.get("access_contact_type", "dispatch"),
-                access_phone=v.get("access_phone"),
-                invite_email=v.get("invite_email"),
-                window=v.get("window", "Mon-Fri 07:00-18:00"),
-                notes=v.get("notes"),
-                active=v.get("active", True)
-            ))
-            
-        # 3. Seed Credentials & Deliveries
-        creds_path = DATA_DIR / "credentials.json"
-        creds_data = {"credentials": [], "deliveries": []}
-        if creds_path.exists():
-            try:
-                with creds_path.open("r", encoding="utf-8") as f:
-                    creds_data = json.load(f)
-            except Exception as e:
-                print(f"Failed to read credentials store seed: {e}")
+            # 2. Seed Vendors
+            vendors_path = DATA_DIR / "vendors.json"
+            if not vendors_path.exists():
+                vendors_path = DATA_DIR / "vendors.seed.json"
+            if not vendors_path.exists():
+                vendors_path = APP_DIR / "vendors.seed.json"
                 
-        for c in creds_data.get("credentials", []):
-            try:
-                valid_until_dt = datetime.fromisoformat(c["valid_until"].replace("Z", "+00:00"))
-                created_at_dt = datetime.utcnow()
-                if c.get("created_at"):
-                    created_at_dt = datetime.fromisoformat(c["created_at"].replace("Z", "+00:00"))
-            except Exception:
-                valid_until_dt = datetime.utcnow()
-                created_at_dt = datetime.utcnow()
+            vendors = []
+            if vendors_path.exists():
+                try:
+                    with vendors_path.open("r", encoding="utf-8") as f:
+                        v_data = json.load(f)
+                        vendors = v_data.get("vendors", [])
+                except Exception as e:
+                    print(f"Failed to read vendors seed: {e}")
+                    
+            for v in vendors:
+                db.add(VendorCompany(
+                    community_name="The Inlets",
+                    company_name=v.get("company_name"),
+                    access_contact_type=v.get("access_contact_type", "dispatch"),
+                    access_phone=v.get("access_phone"),
+                    invite_email=v.get("invite_email"),
+                    window=v.get("window", "Mon-Fri 07:00-18:00"),
+                    notes=v.get("notes"),
+                    active=v.get("active", True)
+                ))
                 
-            db.add(Credential(
-                id=c.get("id"),
-                community=c.get("community", "The Inlets"),
-                company_name=c.get("company_name"),
-                company_key=c.get("company_key"),
-                last4=c.get("last4"),
-                code_hash=c.get("code_hash"),
-                status=c.get("status", "active"),
-                created_at=created_at_dt,
-                valid_until=valid_until_dt,
-                created_by=c.get("created_by", "cam_desk")
-            ))
-            
-        for d in creds_data.get("deliveries", []):
-            try:
-                ts_dt = datetime.fromisoformat(d["ts"].replace("Z", "+00:00"))
-            except Exception:
-                ts_dt = datetime.utcnow()
+            # 3. Seed Credentials & Deliveries
+            creds_path = DATA_DIR / "credentials.json"
+            creds_data = {}
+            if creds_path.exists():
+                try:
+                    with creds_path.open("r", encoding="utf-8") as f:
+                        creds_data = json.load(f)
+                except Exception as e:
+                    print(f"Failed to read credentials store seed: {e}")
+                    
+            for c in creds_data.get("credentials", []):
+                try:
+                    valid_until_dt = datetime.fromisoformat(c["valid_until"].replace("Z", "+00:00")).replace(tzinfo=None)
+                    created_at_dt = datetime.utcnow()
+                    if c.get("created_at"):
+                        created_at_dt = datetime.fromisoformat(c["created_at"].replace("Z", "+00:00")).replace(tzinfo=None)
+                except Exception:
+                    valid_until_dt = datetime.utcnow()
+                    created_at_dt = datetime.utcnow()
+                    
+                db.add(Credential(
+                    id=c.get("id"),
+                    community=c.get("community", "The Inlets"),
+                    company_name=c.get("company_name"),
+                    company_key=c.get("company_key"),
+                    last4=c.get("last4"),
+                    code_hash=c.get("code_hash"),
+                    status=c.get("status", "active"),
+                    created_at=created_at_dt,
+                    valid_until=valid_until_dt,
+                    created_by=c.get("created_by", "cam_desk")
+                ))
                 
-            db.add(Delivery(
-                id=d.get("id"),
-                credential_id=d.get("credential_id"),
-                community=d.get("community"),
-                company_name=d.get("company_name"),
-                to_masked=d.get("to_masked"),
-                channel=d.get("channel"),
-                status=d.get("status"),
-                actor=d.get("actor"),
-                ts=ts_dt,
-                last4=d.get("last4"),
-                window_override=d.get("window_override", False)
-            ))
-            
-        db.commit()
-        print("Database successfully seeded!")
-    except Exception as e:
-        db.rollback()
-        print(f"Seeding failed: {e}")
-    finally:
-        db.close()
+            for d in creds_data.get("deliveries", []):
+                try:
+                    ts_dt = datetime.fromisoformat(d["ts"].replace("Z", "+00:00")).replace(tzinfo=None)
+                except Exception:
+                    ts_dt = datetime.utcnow()
+                    
+                db.add(Delivery(
+                    id=d.get("id"),
+                    credential_id=d.get("credential_id"),
+                    community=d.get("community"),
+                    company_name=d.get("company_name"),
+                    to_masked=d.get("to_masked"),
+                    channel=d.get("channel"),
+                    status=d.get("status"),
+                    actor=d.get("actor"),
+                    ts=ts_dt,
+                    last4=d.get("last4"),
+                    window_override=d.get("window_override", False)
+                ))
+                
+            db.commit()
+            print("Database successfully seeded!")
+        except Exception as e:
+            db.rollback()
+            print(f"Seeding failed: {e}")
+        finally:
+            db.close()
+    except Exception as exc:
+        print(f"init_db_and_seed outer error: {exc}")

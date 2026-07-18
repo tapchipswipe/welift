@@ -18,7 +18,9 @@ from models import SessionLocal, VendorCompany, Credential, Delivery, Community
 log = logging.getLogger("welift-credentials")
 
 APP_DIR = Path(__file__).resolve().parent
-DATA_DIR = APP_DIR.parent / "data"
+DATA_DIR = APP_DIR / "data"
+if not DATA_DIR.exists() and (APP_DIR.parent / "data").exists():
+    DATA_DIR = APP_DIR.parent / "data"
 
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
