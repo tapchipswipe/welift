@@ -12,4 +12,11 @@ configs/retell-ids.json
 **/data/credentials.tmp
 **/data/vendors.json
 **/data/vendors.tmp
-**/data/events.jsonl
+
+# Database & build files
+*.db
+*.db-wal
+*.db-shm
+**/node_modules/
+**/.next/
+.home/

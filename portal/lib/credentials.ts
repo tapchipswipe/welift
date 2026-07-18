@@ -226,7 +226,7 @@ export function vendorWindowAllows(
 export async function findVendor(companyName: string, includeInactive = false) {
   const normName = normalizeCompany(companyName);
   if (!normName) return null;
-  const vendors = getActiveVendors();
+  const vendors = await getActiveVendors();
   for (const v of vendors) {
     const cn = normalizeCompany(v.company_name);
     if (cn === normName || normName.includes(cn) || cn.includes(normName)) {
@@ -259,7 +259,7 @@ export async function mintCredential({
   const vendor = await findVendor(cleanCompanyName);
   const displayCompany = vendor ? vendor.company_name : cleanCompanyName;
 
-  const comm = getCommunity(cleanCommunity);
+  const comm = await getCommunity(cleanCommunity);
   const tz = comm ? comm.timezone : "America/New_York";
 
   const rand = crypto.randomInt(0, 1000000);
@@ -276,13 +276,13 @@ export async function mintCredential({
   const norm = normalizeCompany(displayCompany);
 
   // Rotate existing active credentials
-  rotateActiveCredentials(cleanCommunity, norm);
+  await rotateActiveCredentials(cleanCommunity, norm);
 
   const credId = crypto.randomBytes(8).toString("hex");
   const nowIso = now.toISOString();
   const expiresIso = expires.toISOString();
 
-  insertCredential({
+  await insertCredential({
     id: credId,
     community: cleanCommunity,
     company_name: displayCompany,
@@ -411,7 +411,7 @@ export async function sendCode({
   const sms = await sendSms(to, body);
 
   const deliveryId = crypto.randomBytes(6).toString("hex");
-  insertDelivery({
+  await insertDelivery({
     id: deliveryId,
     credential_id: minted.id,
     community: cleanCommunity,

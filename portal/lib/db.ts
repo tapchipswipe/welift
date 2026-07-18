@@ -1,31 +1,15 @@
-// Uses Node.js built-in sqlite module (available in Node >= 22.5, stable in Node 24+)
-// No npm install needed — works with Node 26 out of the box.
-import { DatabaseSync } from "node:sqlite";
-import path from "path";
+import prisma from "./prisma";
 
-const DB_PATH = path.resolve(process.cwd(), "../data/welift.db");
-
-let _db: DatabaseSync | null = null;
-
-export function getDb(): DatabaseSync {
-  if (!_db) {
-    _db = new DatabaseSync(DB_PATH);
-    _db.exec("PRAGMA journal_mode = WAL;");
-  }
-  return _db;
-}
-
-// ── Types ─────────────────────────────────────────────────────────────────────
 export interface VendorRow {
   id: number;
   community_name: string;
   company_name: string;
-  access_contact_type: string | null;
+  access_contact_type: string;
   access_phone: string | null;
   invite_email: string | null;
   window: string;
   notes: string | null;
-  active: number; // 0 or 1
+  active: boolean;
 }
 
 export interface CommunityRow {
@@ -62,65 +46,83 @@ export interface DeliveryRow {
 }
 
 // ── Vendor Companies ──────────────────────────────────────────────────────────
-export function getActiveVendors(): VendorRow[] {
-  const stmt = getDb().prepare("SELECT * FROM vendor_companies WHERE active = 1");
-  const rows = stmt.all() as VendorRow[];
-  return JSON.parse(JSON.stringify(rows));
+export async function getActiveVendors(): Promise<VendorRow[]> {
+  const vendors = await prisma.vendorCompany.findMany({
+    where: { active: true },
+  });
+  return vendors as unknown as VendorRow[];
 }
 
 // ── Communities ───────────────────────────────────────────────────────────────
-export function getCommunity(name: string): CommunityRow | null {
-  const stmt = getDb().prepare("SELECT * FROM communities WHERE name = ?");
-  const row = stmt.get(name);
-  return row ? JSON.parse(JSON.stringify(row)) : null;
+export async function getCommunity(name: string): Promise<CommunityRow | null> {
+  const comm = await prisma.community.findUnique({
+    where: { name },
+  });
+  return comm as CommunityRow | null;
 }
 
 // ── Credentials ───────────────────────────────────────────────────────────────
-export function rotateActiveCredentials(community: string, companyKey: string): void {
-  getDb()
-    .prepare(
-      "UPDATE credentials SET status = 'rotated' WHERE status = 'active' AND community = ? AND company_key = ?"
-    )
-    .run(community, companyKey);
+export async function rotateActiveCredentials(community: string, companyKey: string): Promise<void> {
+  await prisma.credential.updateMany({
+    where: {
+      status: "active",
+      community,
+      company_key: companyKey,
+    },
+    data: {
+      status: "rotated",
+    },
+  });
 }
 
-export function insertCredential(cred: CredentialRow): void {
-  getDb()
-    .prepare(
-      `INSERT INTO credentials (id, community, company_name, company_key, last4, code_hash, status, created_at, valid_until, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    )
-    .run(
-      cred.id, cred.community, cred.company_name, cred.company_key,
-      cred.last4, cred.code_hash, cred.status, cred.created_at,
-      cred.valid_until, cred.created_by
-    );
+export async function insertCredential(cred: CredentialRow): Promise<void> {
+  await prisma.credential.create({
+    data: {
+      id: cred.id,
+      community: cred.community,
+      company_name: cred.company_name,
+      company_key: cred.company_key,
+      last4: cred.last4,
+      code_hash: cred.code_hash,
+      status: cred.status,
+      created_at: cred.created_at,
+      valid_until: cred.valid_until,
+      created_by: cred.created_by,
+    },
+  });
 }
 
 // ── Deliveries ────────────────────────────────────────────────────────────────
-export function insertDelivery(delivery: DeliveryRow): void {
-  getDb()
-    .prepare(
-      `INSERT INTO deliveries (id, credential_id, community, company_name, to_masked, channel, status, actor, ts, last4, window_override)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    )
-    .run(
-      delivery.id, delivery.credential_id, delivery.community, delivery.company_name,
-      delivery.to_masked, delivery.channel, delivery.status, delivery.actor,
-      delivery.ts, delivery.last4, delivery.window_override
-    );
+export async function insertDelivery(delivery: DeliveryRow): Promise<void> {
+  await prisma.delivery.create({
+    data: {
+      id: delivery.id,
+      credential_id: delivery.credential_id,
+      community: delivery.community,
+      company_name: delivery.company_name,
+      to_masked: delivery.to_masked,
+      channel: delivery.channel,
+      status: delivery.status,
+      actor: delivery.actor,
+      ts: delivery.ts,
+      last4: delivery.last4,
+      window_override: delivery.window_override,
+    },
+  });
 }
 
-export function getRecentDeliveries(companyNames: string[], limit = 20): DeliveryRow[] {
+export async function getRecentDeliveries(companyNames: string[], limit = 20): Promise<DeliveryRow[]> {
   if (companyNames.length === 0) return [];
-  const placeholders = companyNames.map(() => "?").join(", ");
-  const stmt = getDb().prepare(
-    `SELECT id, credential_id, community, company_name, to_masked, channel, status, actor, ts, last4, window_override
-     FROM deliveries
-     WHERE company_name IN (${placeholders})
-     ORDER BY ts DESC
-     LIMIT ${limit}`
-  );
-  const rows = stmt.all(...companyNames);
-  return JSON.parse(JSON.stringify(rows));
+  const deliveries = await prisma.delivery.findMany({
+    where: {
+      company_name: {
+        in: companyNames,
+      },
+    },
+    orderBy: {
+      ts: "desc",
+    },
+    take: limit,
+  });
+  return deliveries as unknown as DeliveryRow[];
 }

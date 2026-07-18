@@ -7,16 +7,25 @@ from sqlalchemy import (
     create_engine, Column, Integer, String, Boolean, DateTime, JSON
 )
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
+from dotenv import load_dotenv
+
+# Load env variables (ensures we get DATABASE_URL from .env file if it exists)
+load_dotenv()
 
 # Database URL configuration
 APP_DIR = Path(__file__).resolve().parent
 DATA_DIR = APP_DIR.parent / "data"
 DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DATA_DIR}/welift.db")
 
+# Standardize postgres:// -> postgresql:// for SQLAlchemy compatibility
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
 # Create sqlite database parent dir if it doesn't exist
 if DATABASE_URL.startswith("sqlite:///"):
     db_path = Path(DATABASE_URL.replace("sqlite:///", ""))
     db_path.parent.mkdir(parents=True, exist_ok=True)
+
 
 if DATABASE_URL in {"sqlite://", "sqlite:///:memory:"}:
     from sqlalchemy.pool import StaticPool
@@ -125,6 +134,8 @@ def init_db_and_seed() -> None:
         guest_list_path = DATA_DIR / "guest-list.json"
         if not guest_list_path.exists():
             guest_list_path = DATA_DIR / "guest-list.example.json"
+        if not guest_list_path.exists():
+            guest_list_path = APP_DIR / "guest-list.example.json"
             
         timezone_str = "America/New_York"
         guest_entries = []
@@ -163,6 +174,8 @@ def init_db_and_seed() -> None:
         vendors_path = DATA_DIR / "vendors.json"
         if not vendors_path.exists():
             vendors_path = DATA_DIR / "vendors.seed.json"
+        if not vendors_path.exists():
+            vendors_path = APP_DIR / "vendors.seed.json"
             
         vendors = []
         if vendors_path.exists():

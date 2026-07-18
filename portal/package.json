@@ -3,10 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "node prisma/prepare-db.js && next dev",
+    "build": "NEXT_TELEMETRY_DISABLED=1 CI=true node prisma/prepare-db.js && NEXT_TELEMETRY_DISABLED=1 CI=true next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postinstall": "node prisma/prepare-db.js"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.5.20",

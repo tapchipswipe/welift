@@ -16,7 +16,7 @@ export async function getDispatcherContext() {
   }
 
   // Find all active vendor companies matching this email
-  const allActiveVendors = getActiveVendors();
+  const allActiveVendors = await getActiveVendors();
 
   const matchingVendors = allActiveVendors.filter(
     (v) => v.invite_email?.toLowerCase() === email
@@ -35,7 +35,7 @@ export async function getDispatcherContext() {
   // Let's gather all vendor companies and check window authorizations
   const results = [];
   for (const vendor of matchingVendors) {
-    const comm = getCommunity(vendor.community_name);
+    const comm = await getCommunity(vendor.community_name);
     const tz = comm?.timezone || "America/New_York";
     const windowCheck = vendorWindowAllows(vendor, new Date(), tz);
     
@@ -50,7 +50,7 @@ export async function getDispatcherContext() {
   }
 
   const companyNames = matchingVendors.map((v) => v.company_name);
-  const deliveries = getRecentDeliveries(companyNames);
+  const deliveries = await getRecentDeliveries(companyNames);
 
   return {
     authenticated: true,
@@ -102,7 +102,7 @@ export async function sendCodeAction(data: {
     }
 
     // Find the vendor company matching this email and community
-    const allActiveVendors = getActiveVendors();
+    const allActiveVendors = await getActiveVendors();
 
     const vendor = allActiveVendors.find(
       (v) =>
