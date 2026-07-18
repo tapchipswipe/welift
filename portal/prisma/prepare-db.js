@@ -52,15 +52,24 @@ try {
   process.exit(1);
 }
 
-// Push schema changes if using PostgreSQL
-if (isPostgres) {
-  try {
+// Push schema changes for the selected provider so runtime queries don't fail on fresh environments.
+try {
+  if (isPostgres) {
     console.log('Prisma Prepare DB: Pushing schema to PostgreSQL database...');
-    execSync(`"${prismaBin}" db push --accept-data-loss`, { stdio: 'inherit', env: { ...process.env, CHECKPOINT_DISABLE: '1' } });
-    console.log('Prisma Prepare DB: Database schema push completed.');
-  } catch (error) {
-    console.error('Prisma Prepare DB: Database schema push failed:', error.message);
-    // Do not fail the build if the database is temporarily unreachable, but warn clearly.
-    // In production/deployment settings, the DB must be reachable.
+    execSync(`"${prismaBin}" db push --accept-data-loss`, {
+      stdio: 'inherit',
+      env: { ...process.env, CHECKPOINT_DISABLE: '1' },
+    });
+  } else {
+    console.log('Prisma Prepare DB: Pushing schema to SQLite database...');
+    execSync(`"${prismaBin}" db push`, {
+      stdio: 'inherit',
+      env: { ...process.env, CHECKPOINT_DISABLE: '1' },
+    });
   }
+  console.log('Prisma Prepare DB: Database schema push completed.');
+} catch (error) {
+  console.error('Prisma Prepare DB: Database schema push failed:', error.message);
+  // Do not fail the build if the database is temporarily unreachable, but warn clearly.
+  // In production/deployment settings, the DB must be reachable.
 }

@@ -19,6 +19,25 @@ export default async function DashboardPage() {
   }
 
   if (!context.authorized) {
+    if ("serviceUnavailable" in context && context.serviceUnavailable) {
+      return (
+        <div className="flex min-h-screen flex-col items-center justify-center bg-radial from-slate-900 to-slate-950 p-6 text-center">
+          <div className="w-full max-w-md rounded-2xl border border-amber-500/20 bg-amber-950/10 p-8 backdrop-blur-md shadow-2xl">
+            <h1 className="text-2xl font-bold text-slate-100 mb-2">Dashboard Unavailable</h1>
+            <p className="text-slate-400 text-sm mb-6 leading-relaxed">
+              We couldn&apos;t load your dashboard data right now. Please try again shortly.
+            </p>
+            <Link
+              href="/"
+              className="text-xs text-slate-500 hover:text-slate-400 underline transition-colors"
+            >
+              Back to Home
+            </Link>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-radial from-slate-900 to-slate-950 p-6 text-center">
         <div className="w-full max-w-md rounded-2xl border border-rose-500/20 bg-rose-950/10 p-8 backdrop-blur-md shadow-2xl">
@@ -40,7 +59,7 @@ export default async function DashboardPage() {
           </div>
           <h1 className="text-2xl font-bold text-slate-100 mb-2">Access Denied</h1>
           <p className="text-slate-400 text-sm mb-6 leading-relaxed">
-            The email <span className="font-mono text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded">{context.email}</span> is not linked to any active vendor company in our system.
+            The email <span className="font-mono text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded">{context.email || "on your account"}</span> is not linked to any active vendor company in our system.
           </p>
           <div className="flex flex-col gap-3">
             <div className="flex justify-center bg-slate-900 border border-slate-800 rounded-xl p-3">
