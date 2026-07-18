@@ -10,6 +10,8 @@ Residents already get in with a **keypad code** or **RFID sticker**. Guests shou
 
 Full thesis: **[docs/PRODUCT.md](docs/PRODUCT.md)** · Security: **[docs/GATE-SECURITY.md](docs/GATE-SECURITY.md)**
 
+New to the repo? See the **[project index](docs/PROJECT-INDEX.md)** for the runtime architecture, source-of-truth documents, and current blockers.
+
 | We are | We are not |
 |--------|------------|
 | Vendor **credential desk** + rare AI fallback | AI receptionist for every truck |
